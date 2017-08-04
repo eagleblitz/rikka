@@ -90,6 +90,8 @@ func (p *playedPlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte) 
 
 // Save will save plugin state to a byte array.
 func (p *playedPlugin) Save() ([]byte, error) {
+	p.Lock()
+	defer p.Unlock()
 	return json.Marshal(p)
 }
 
