@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/ThyLeader/rikka"
+	"github.com/bwmarrin/discordgo"
 	"github.com/dustin/go-humanize"
 	"github.com/go-redis/redis"
-	"github.com/bwmarrin/discordgo"
 )
 
 func init() {
@@ -42,6 +42,7 @@ func (a byDuration) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byDuration) Less(i, j int) bool { return a[i].Duration >= a[j].Duration }
 
 type playedUser struct {
+	sync.RWMutex
 	Entries     map[string]*playedEntry
 	Current     string
 	LastChanged time.Time
@@ -49,6 +50,8 @@ type playedUser struct {
 }
 
 func (p *playedUser) Update(name string, now time.Time) {
+	p.Lock()
+	defer p.Unlock()
 	if p.Current != "" {
 		pe := p.Entries[p.Current]
 		if pe == nil {
