@@ -627,7 +627,7 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		return
 	}
 
-	ytdl := exec.Command("./youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
+	ytdl := exec.Command("youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
 	//if vc.debug {
 	ytdl.Stderr = os.Stderr
 	//}
@@ -638,7 +638,7 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	}
 	ytdlbuf := bufio.NewReaderSize(ytdlout, 16384)
 
-	ffmpeg := exec.Command("./ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
+	ffmpeg := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
 	ffmpeg.Stdin = ytdlbuf
 	//if vc.debug {
 	ffmpeg.Stderr = os.Stderr
@@ -650,7 +650,7 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	}
 	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
 
-	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
+	dca := exec.Command("dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
 	//dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
 	dca.Stdin = ffmpegbuf
 	//if vc.debug {
