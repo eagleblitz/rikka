@@ -628,9 +628,9 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	}
 
 	ytdl := exec.Command("youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
-	//if vc.debug {
-	ytdl.Stderr = os.Stderr
-	//}
+	if vc.debug {
+		ytdl.Stderr = os.Stderr
+	}
 	ytdlout, err := ytdl.StdoutPipe()
 	if err != nil {
 		log.Println("musicplugin: ytdl StdoutPipe err:", err)
@@ -640,9 +640,9 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 
 	ffmpeg := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
 	ffmpeg.Stdin = ytdlbuf
-	//if vc.debug {
-	ffmpeg.Stderr = os.Stderr
-	//}
+	if vc.debug {
+		ffmpeg.Stderr = os.Stderr
+	}
 	ffmpegout, err := ffmpeg.StdoutPipe()
 	if err != nil {
 		log.Println("musicplugin: ffmpeg StdoutPipe err:", err)
@@ -672,25 +672,20 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		go ytdl.Wait()
 	}()
 
-	// err = ffmpeg.Start()
-	// if err != nil {
-	// 	log.Println("musicplugin: ffmpeg Start err:", err)
-	// 	return
-	// }
-	// defer func() {
-	// 	go ffmpeg.Wait()
-	// }()
-
-	go func() {
-		fmt.Println("waiting")
-		time.Sleep(5 * time.Second)
-		fmt.Println("\nstarting dca")
-		err = dca.Start()
-		if err != nil {
-			log.Println("musicplugin: dca Start err:", err)
-			return
-		}
+	err = ffmpeg.Start()
+	if err != nil {
+		log.Println("musicplugin: ffmpeg Start err:", err)
+		return
+	}
+	defer func() {
+		go ffmpeg.Wait()
 	}()
+
+	err = dca.Start()
+	if err != nil {
+		log.Println("musicplugin: dca Start err:", err)
+		return
+	}
 
 	defer func() {
 		go dca.Wait()

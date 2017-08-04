@@ -18,3 +18,7 @@ cmd/rikka/rikka2
 cmd/rikka/rikka
 
 cmd/rikka/config\.json
+cmd/rikka/dca-rs.exe
+cmd/rikka/ffmpeg.exe
+cmd/rikka/rikka.exe
+cmd/rikka/youtube-dl.exe
