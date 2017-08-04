@@ -627,7 +627,7 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		return
 	}
 
-	ytdl := exec.Command("youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
+	ytdl := exec.Command("./youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
 	//if vc.debug {
 	ytdl.Stderr = os.Stderr
 	//}
@@ -638,21 +638,21 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	}
 	ytdlbuf := bufio.NewReaderSize(ytdlout, 16384)
 
-	//ffmpeg := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
-	//ffmpeg.Stdin = ytdlbuf
+	ffmpeg := exec.Command("./ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
+	ffmpeg.Stdin = ytdlbuf
 	//if vc.debug {
-	//ffmpeg.Stderr = os.Stderr
+	ffmpeg.Stderr = os.Stderr
 	//}
-	// ffmpegout, err := ffmpeg.StdoutPipe()
-	// if err != nil {
-	// 	log.Println("musicplugin: ffmpeg StdoutPipe err:", err)
-	// 	return
-	// }
-	//ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
+	ffmpegout, err := ffmpeg.StdoutPipe()
+	if err != nil {
+		log.Println("musicplugin: ffmpeg StdoutPipe err:", err)
+		return
+	}
+	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
 
-	//dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
-	dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
-	dca.Stdin = ytdlbuf
+	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
+	//dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
+	dca.Stdin = ffmpegbuf
 	//if vc.debug {
 	dca.Stderr = os.Stderr
 	//}
@@ -681,11 +681,17 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	// 	go ffmpeg.Wait()
 	// }()
 
-	err = dca.Start()
-	if err != nil {
-		log.Println("musicplugin: dca Start err:", err)
-		return
-	}
+	go func() {
+		fmt.Println("waiting")
+		time.Sleep(5 * time.Second)
+		fmt.Println("\nstarting dca")
+		err = dca.Start()
+		if err != nil {
+			log.Println("musicplugin: dca Start err:", err)
+			return
+		}
+	}()
+
 	defer func() {
 		go dca.Wait()
 	}()
