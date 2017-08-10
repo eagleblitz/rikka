@@ -240,12 +240,13 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		service.SendMessage(message.Channel(), "Please only mention one user")
 		return
 	}
+	var id string
 	var mentionedUser *discordgo.User
 	if len(mentions) == 1 {
 		mentionedUser = mentions[0]
+		id = mentionedUser.ID
 	}
 
-	var id string
 	if len(mentions) == 0 {
 		_, parts := rikka.ParseCommand(service, message)
 		switch len(parts) {
