@@ -136,7 +136,7 @@ func (p *MusicPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.
 	}
 
 	help := []string{
-		rikka.CommandHelp(service, "music", "<command>", "Music Plugin, see `help music`")[0],
+		rikka.CommandHelp(service, "music", "<command>", "Music, see `help music`")[0],
 	}
 
 	if detailed {
@@ -144,14 +144,15 @@ func (p *MusicPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.
 			"Examples:",
 			rikka.CommandHelp(service, "music", "join [channelid]", "Join your voice channel or the provided voice channel.")[0],
 			rikka.CommandHelp(service, "music", "leave", "Leave current voice channel.")[0],
-			rikka.CommandHelp(service, "music", "play [url]", "Start playing music and optionally enqueue provided url.")[0],
+			rikka.CommandHelp(service, "music", "play/add [url | youtube search term]", "Start playing music and optionally enqueue provided url.")[0],
 			rikka.CommandHelp(service, "music", "info", "Information about this plugin and the currently playing song.")[0],
 			rikka.CommandHelp(service, "music", "pause", "Pause playback of current song.")[0],
 			rikka.CommandHelp(service, "music", "resume", "Resume playback of current song.")[0],
 			rikka.CommandHelp(service, "music", "skip", "Skip current song.")[0],
 			rikka.CommandHelp(service, "music", "stop", "Stop playing music.")[0],
-			rikka.CommandHelp(service, "music", "list", "List contents of queue.")[0],
+			rikka.CommandHelp(service, "music", "list/queue", "List contents of queue.")[0],
 			rikka.CommandHelp(service, "music", "clear", "Clear all items from queue.")[0],
+			rikka.CommandHelp(service, "music", "stats", "View stats about the music command.")[0],
 		}...)
 	}
 
@@ -198,10 +199,6 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 	case "help":
 		// display extended help information
 		service.SendMessage(message.Channel(), strings.Join(p.Help(bot, service, message, true), "\n"))
-
-	case "stats":
-		// TODO: maybe provide plugin stats, total channels, total song queues, etc
-		service.SendMessage(message.Channel(), "toon:tm:")
 
 	case "join":
 		// if !service.IsBotOwner(message) {
@@ -262,6 +259,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		vc.Unlock()
 
 	case "play":
+	case "add":
 		// Start queue player and optionally enqueue provided songs
 
 		p.gostart(vc, service)
@@ -366,7 +364,26 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		msg += fmt.Sprintf("`Thumbnail:` %s\n", vc.playing.Thumbnail)
 		service.SendMessage(message.Channel(), msg)
 
+	case "stats":
+		p.Lock()
+		var l time.Duration
+		var s int
+		c := len(p.VoiceConnections)
+		for _, e := range p.VoiceConnections {
+			s += len(e.Queue)
+			for _, q := range e.Queue {
+				l += time.Duration(q.Duration)
+			}
+		}
+		p.Unlock()
+		msg := fmt.Sprintf("Music stats:\n")
+		msg += fmt.Sprintf("`Total connections:`\t%v\n", c)
+		msg += fmt.Sprintf("`Total songs queued:`\t%v\n", s)
+		msg += fmt.Sprintf("`Total time queued:`\t%v", time.Duration(l*time.Second).String())
+		service.SendMessage(message.Channel(), msg)
+
 	case "list":
+	case "queue":
 		// list top items in the queue
 
 		if len(vc.Queue) == 0 {

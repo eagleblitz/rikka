@@ -12,6 +12,7 @@ import (
 	"github.com/ThyLeader/rikka"
 	"github.com/ThyLeader/rikka/discordavatarplugin"
 	"github.com/ThyLeader/rikka/inviteplugin"
+	"github.com/ThyLeader/rikka/misccommands"
 	"github.com/ThyLeader/rikka/musicplugin"
 	"github.com/ThyLeader/rikka/playedplugin"
 	"github.com/ThyLeader/rikka/playingplugin"
@@ -74,6 +75,7 @@ func main() {
 	cp.AddCommand("info", statsplugin.StatsCommand, nil)
 	cp.AddCommand("stat", statsplugin.StatsCommand, nil)
 	cp.AddCommand("guilds", statsplugin.GuildsCommand, nil)
+	cp.AddCommand("pepe", misccommands.MessagePeepo, nil)
 
 	cp.AddCommand("quit", func(bot *rikka.Bot, service rikka.Service, message rikka.Message, args string, parts []string) {
 		if service.IsBotOwner(message) {
@@ -91,6 +93,7 @@ func main() {
 
 	bot.RegisterPlugin(discord, cp)
 
+	//bot.RegisterPlugin(discord, darkthemetextplugin.New())
 	bot.RegisterPlugin(discord, discordavatarplugin.New())
 	bot.RegisterPlugin(discord, musicplugin.New(discord))
 	bot.RegisterPlugin(discord, playedplugin.New())

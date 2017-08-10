@@ -32,7 +32,7 @@ type Message interface {
 	User() *discordgo.User
 	Type() MessageType
 	Mentions() []*discordgo.User
-	//Guild() string
+	Guild() string
 }
 
 // ErrAlreadyJoined is an error dispatched on Join if the bot is already joined to the request.
@@ -66,6 +66,7 @@ type Service interface {
 	SupportsMessageHistory() bool
 	MessageHistory(chanel string) []Message
 	Channel(channel string) (*discordgo.Channel, error)
+	Member(guildID, userID string) (*discordgo.Member, error)
 }
 
 // LoadFunc is the function signature for a load handler.

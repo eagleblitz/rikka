@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"regexp"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -223,8 +221,6 @@ func (p *playedPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka
 	return rikka.CommandHelp(service, "played", "[@username]", "Returns your most played games, or a users most played games if provided.")
 }
 
-var userIDRegex = regexp.MustCompile("<@!?([0-9]*)>")
-
 func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message rikka.Message) {
 	defer rikka.MessageRecover()
 	if service.Name() != rikka.DiscordServiceName {
@@ -249,12 +245,30 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		mentionedUser = mentions[0]
 	}
 
-	query := strings.Join(strings.Split(message.RawMessage(), " ")[1:], " ")
+	var id string
+	if len(mentions) == 0 {
+		_, parts := rikka.ParseCommand(service, message)
+		switch len(parts) {
+		case 1:
+			id = parts[0]
+			m, err := service.Member(message.Guild(), id)
+			if err != nil {
+				service.SendMessage(message.Channel(), "There was an error! Please report this to the devs\n"+err.Error())
+				log.Println(err.Error())
+				return
+			}
+			mentionedUser = m.User
+		case 0:
+			id = message.UserID()
+		default:
+			service.SendMessage(message.Channel(), "Please only search for one user at a time")
+			return
+		}
+	}
 
-	id := message.UserID()
-	match := userIDRegex.FindStringSubmatch(query)
-	if match != nil {
-		id = match[1]
+	if id == "" {
+		service.SendMessage(message.Channel(), "tell thy he dun screwed up")
+		return
 	}
 
 	p.Lock()
@@ -262,12 +276,12 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 
 	u := p.Users[id]
 	if u == nil {
-		service.SendMessage(message.Channel(), "I haven't seen that user.")
+		service.SendMessage(message.Channel(), fmt.Sprintf("I haven't seen user %s.", id))
 		return
 	}
 
 	if len(u.Entries) == 0 {
-		service.SendMessage(message.Channel(), "I do not have anything recorded for that user.")
+		service.SendMessage(message.Channel(), fmt.Sprintf("I do not have anything recorded for user %s.", id))
 		return
 	}
 
@@ -282,7 +296,6 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 	}
 
 	sort.Sort(pes)
-	user := message.User()
 	discord := service.(*rikka.Discord)
 	var statuses string
 
@@ -316,6 +329,7 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		title = mentionedUser.Username
 		url = discordgo.EndpointUserAvatar(mentionedUser.ID, mentionedUser.Avatar)
 	} else {
+		user := message.User()
 		title = message.UserName()
 		url = discordgo.EndpointUserAvatar(user.ID, user.Avatar)
 	}

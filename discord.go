@@ -104,7 +104,9 @@ func (m *DiscordMessage) Type() MessageType {
 
 //
 func (m *DiscordMessage) Guild() string {
-	return m.DiscordgoMessage.ChannelID
+	c, _ := m.Discord.Channel(m.Channel())
+	g, _ := m.Discord.Guild(c.GuildID)
+	return g.ID
 }
 
 //
@@ -524,4 +526,8 @@ func (d *Discord) NicknameForID(userID, userName, channelID string) string {
 		}
 	}
 	return userName
+}
+
+func (d *Discord) Member(gID, uID string) (*discordgo.Member, error) {
+	return d.Session.GuildMember(gID, uID)
 }
