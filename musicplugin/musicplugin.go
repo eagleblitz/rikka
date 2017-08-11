@@ -258,8 +258,8 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		service.SendMessage(message.Channel(), fmt.Sprintf("debug mode set to %v", vc.debug))
 		vc.Unlock()
 
-	case "play":
-	case "add":
+	//case "play":
+	case "add", "play":
 		// Start queue player and optionally enqueue provided songs
 
 		p.gostart(vc, service)
@@ -382,8 +382,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		msg += fmt.Sprintf("`Total time queued:`\t%v", time.Duration(l*time.Second).String())
 		service.SendMessage(message.Channel(), msg)
 
-	case "list":
-	case "queue":
+	case "list", "queue":
 		// list top items in the queue
 
 		if len(vc.Queue) == 0 {
