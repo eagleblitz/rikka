@@ -3,6 +3,7 @@ package rikka
 import (
 	"errors"
 	"io"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -67,6 +68,7 @@ type Service interface {
 	MessageHistory(chanel string) []Message
 	Channel(channel string) (*discordgo.Channel, error)
 	Member(guildID, userID string) (*discordgo.Member, error)
+	TimestampForID(id string) (time.Time, error)
 }
 
 // LoadFunc is the function signature for a load handler.

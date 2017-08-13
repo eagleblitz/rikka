@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -373,8 +375,7 @@ func (d *Discord) SupportsMultiline() bool {
 
 // CommandPrefix returns the command prefix for the service.
 func (d *Discord) CommandPrefix() string {
-	env := os.Getenv("ENV")
-	if env == "PROD" {
+	if len(os.Args) > 1 {
 		return fmt.Sprintf("r.")
 	}
 	return fmt.Sprintf("rt.")
@@ -530,4 +531,13 @@ func (d *Discord) NicknameForID(userID, userName, channelID string) string {
 
 func (d *Discord) Member(gID, uID string) (*discordgo.Member, error) {
 	return d.Session.GuildMember(gID, uID)
+}
+
+// TimestampForID takes a Discord ID and parses a timestamp from it
+func (d *Discord) TimestampForID(id string) (time.Time, error) {
+	_id, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return time.Unix(0, 0), err
+	}
+	return time.Unix(((_id>>22)+1420070400000)/1000, 0), nil
 }

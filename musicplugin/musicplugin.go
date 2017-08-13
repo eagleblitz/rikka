@@ -31,11 +31,10 @@ type voiceConnection struct {
 	sync.Mutex
 	debug bool
 
-	GuildID       string
-	ChannelID     string
-	TextChannelID string
-	MaxQueueSize  int
-	Queue         []song
+	GuildID      string
+	ChannelID    string
+	MaxQueueSize int
+	Queue        []song
 
 	close   chan struct{}
 	control chan controlMessage
@@ -45,6 +44,8 @@ type voiceConnection struct {
 
 type controlMessage int
 
+var songsAdded int
+
 const (
 	Skip controlMessage = iota
 	Pause
@@ -52,17 +53,18 @@ const (
 )
 
 type song struct {
-	AddedBy     string
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	FullTitle   string `json:"full_title"`
-	Thumbnail   string `json:"thumbnail"`
-	URL         string `json:"webpage_url"`
-	Duration    int    `json:"duration"`
-	Likes       int    `json:"like_count"`
-	Views       int    `json:"view_count"`
-	Remaining   int
+	TextChannelID string
+	AddedBy       string
+	ID            string `json:"id"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	FullTitle     string `json:"full_title"`
+	Thumbnail     string `json:"thumbnail"`
+	URL           string `json:"webpage_url"`
+	Duration      int    `json:"duration"`
+	Likes         int    `json:"like_count"`
+	Views         int    `json:"view_count"`
+	Remaining     int
 }
 
 // New will create a new music plugin.
@@ -378,7 +380,8 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		p.Unlock()
 		msg := fmt.Sprintf("Music stats:\n")
 		msg += fmt.Sprintf("`Total connections:`\t%v\n", c)
-		msg += fmt.Sprintf("`Total songs queued:`\t%v\n", s)
+		msg += fmt.Sprintf("`Total songs queued:`\t%v\n", songsAdded)
+		msg += fmt.Sprintf("`Current songs queued:`\t%v\n", s)
 		msg += fmt.Sprintf("`Total time queued:`\t%v", time.Duration(l*time.Second).String())
 		service.SendMessage(message.Channel(), msg)
 
@@ -539,6 +542,7 @@ func (p *MusicPlugin) enqueue(vc *voiceConnection, url string, service rikka.Ser
 			continue
 		}
 
+		s.TextChannelID = message.Channel()
 		s.AddedBy = message.UserName()
 
 		vc.Lock()
@@ -546,6 +550,7 @@ func (p *MusicPlugin) enqueue(vc *voiceConnection, url string, service rikka.Ser
 		vc.Unlock()
 		service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
 	}
+	songsAdded++
 	return
 }
 
@@ -622,7 +627,7 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 			timeLeft += time.Duration(v.Duration)
 		}
 		timeLeft *= time.Second
-		//service.SendMessage(vc.ChannelID, fmt.Sprintf("Now playing %s as requested by %s\nSongs left in queue: %v [%s total]", Song.Title, Song.AddedBy, len(vc.Queue), timeLeft.String()))
+		service.SendMessage(vc.playing.TextChannelID, fmt.Sprintf("Now playing %s as requested by %s\nSongs left in queue: %v [%s total]", Song.Title, Song.AddedBy, len(vc.Queue), timeLeft.String()))
 		p.play(vc, close, control, Song)
 		vc.playing = nil
 

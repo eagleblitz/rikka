@@ -11,7 +11,9 @@ import (
 
 	"github.com/ThyLeader/rikka"
 	"github.com/ThyLeader/rikka/discordavatarplugin"
+	"github.com/ThyLeader/rikka/imageplugin"
 	"github.com/ThyLeader/rikka/inviteplugin"
+	"github.com/ThyLeader/rikka/mathplugin"
 	"github.com/ThyLeader/rikka/misccommands"
 	"github.com/ThyLeader/rikka/musicplugin"
 	"github.com/ThyLeader/rikka/playedplugin"
@@ -36,7 +38,7 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
-	if os.Getenv("ENV") == "PROD" {
+	if len(os.Args) > 1 {
 		if t := viper.GetString("token1"); t != "" {
 			discordToken = t
 		} else {
@@ -76,6 +78,7 @@ func main() {
 	cp.AddCommand("stat", statsplugin.StatsCommand, nil)
 	cp.AddCommand("guilds", statsplugin.GuildsCommand, nil)
 	cp.AddCommand("pepe", misccommands.MessagePeepo, nil)
+	cp.AddCommand("ts", misccommands.MessageIDTS, misccommands.HelpIDTS)
 
 	cp.AddCommand("quit", func(bot *rikka.Bot, service rikka.Service, message rikka.Message, args string, parts []string) {
 		if service.IsBotOwner(message) {
@@ -99,6 +102,8 @@ func main() {
 	bot.RegisterPlugin(discord, playedplugin.New())
 	bot.RegisterPlugin(discord, playingplugin.New())
 	bot.RegisterPlugin(discord, reminderplugin.New())
+	bot.RegisterPlugin(discord, mathplugin.New())
+	bot.RegisterPlugin(discord, imageplugin.New())
 
 	// Start all our services.
 	bot.Open()
