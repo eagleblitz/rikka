@@ -22,3 +22,7 @@ cmd/rikka/dca-rs.exe
 cmd/rikka/ffmpeg.exe
 cmd/rikka/rikka.exe
 cmd/rikka/youtube-dl.exe
+cmd/testing/config.json
+cmd/testing/dca-rs
+cmd/testing/testing
+cmd/testing/fonts/swanse.tff

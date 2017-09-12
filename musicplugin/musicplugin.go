@@ -269,12 +269,13 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		if len(parts[1:]) == 1 {
 			u, err := url.ParseRequestURI(parts[1])
 			if err != nil {
-				service.SendMessage(message.Channel(), "Searching youtube...")
+				service.Typing(message.Channel())
 				err = p.enqueue(bot, vc, parts[1], service, message, true)
 				if err != nil {
 					service.SendMessage(message.Channel(), err.Error())
 					return
 				}
+				return
 			}
 			err = p.enqueue(bot, vc, u.String(), service, message, false)
 			if err != nil {
@@ -282,7 +283,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 			}
 			return
 		}
-		service.SendMessage(message.Channel(), "Searching youtube...")
+		service.Typing(message.Channel())
 		err = p.enqueue(bot, vc, strings.Join(parts[1:], " "), service, message, true)
 		if err != nil {
 			service.SendMessage(message.Channel(), err.Error())
@@ -561,53 +562,72 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 			return
 		}
 		msg := []string{}
+		msg = append(msg, []string{
+			"```rb",
+			"Please select the song you would like to play.\n",
+		}...)
 		for i, e := range res {
 			i++
-			msg = append(msg, fmt.Sprintf("`%v`: `%s`", i, e.Title))
+			msg = append(msg, fmt.Sprintf("[%v] # %s", i, e.Title))
 		}
-		msg = append(msg, fmt.Sprintf("\nType `exit` to exit the menu"))
+		msg = append(msg, []string{
+			"\nType the appropriate number to select the song.",
+			"Type 'exit' to leave the menu.",
+			"```",
+		}...)
+
 		dd, _ := service.SendMessage(message.Channel(), strings.Join(msg, "\n"))
 		defer service.DeleteMessage(message.Channel(), dd.ID)
+
+		timeout := time.Tick(30 * time.Second)
 
 		m := bot.MakeCallback(service, message.UserID())
 		defer bot.CloseCallback(service, message.UserID())
 		e := 0
 		for {
-			ms := <-m
+			select {
+			case ms := <-m:
+				if ms.Channel() != message.Channel() {
+					continue
+				}
 
-			if ms.Message() == "exit" {
-				service.SendMessage(message.Channel(), "Exiting menu")
+				if ms.Message() == "exit" {
+					service.SendMessage(message.Channel(), "Exiting menu")
+					return nil
+				}
+
+				n, err := strconv.Atoi(ms.Message())
+				if e >= 5 {
+					service.SendMessage(message.Channel(), "BAKA!! Seems you cant type a correct response. Exiting menu")
+					return nil
+				}
+				if err != nil {
+					service.SendMessage(message.Channel(), fmt.Sprintf("Please type a number between 1 and 5. You typed `%s`.", ms.Message()))
+					e++
+					continue
+				}
+
+				if n > 5 || n < 1 {
+					service.SendMessage(message.Channel(), fmt.Sprintf("Please type a number between 1 and 5. You typed `%s`.", ms.Message()))
+					e++
+					continue
+				}
+
+				service.SendMessage(message.Channel(), fmt.Sprintf("You picked number %v.", n))
+				s := res[n-1]
+				s.TextChannelID = message.Channel()
+				s.AddedBy = message.UserName()
+
+				vc.Lock()
+				vc.Queue = append(vc.Queue, s)
+				vc.Unlock()
+				service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
+				songsAdded++
 				return nil
+			case <-timeout:
+				service.SendMessage(message.Channel(), "Menu timed out")
+				return
 			}
-
-			n, err := strconv.Atoi(ms.Message())
-			if e >= 5 {
-				service.SendMessage(message.Channel(), "BAKA!! Seems you cant type a correct response. Exiting menu")
-				return nil
-			}
-			if err != nil {
-				service.SendMessage(message.Channel(), fmt.Sprintf("Please type a number between 1 and 5. You typed `%s`.", ms.Message()))
-				e++
-				continue
-			}
-
-			if n > 5 || n < 1 {
-				service.SendMessage(message.Channel(), fmt.Sprintf("Please type a number between 1 and 5. You typed `%s`.", ms.Message()))
-				e++
-				continue
-			}
-
-			service.SendMessage(message.Channel(), fmt.Sprintf("You picked number %v.", n))
-			s := res[n-1]
-			s.TextChannelID = message.Channel()
-			s.AddedBy = message.UserName()
-
-			vc.Lock()
-			vc.Queue = append(vc.Queue, s)
-			vc.Unlock()
-			service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
-			songsAdded++
-			return nil
 		}
 	}
 
