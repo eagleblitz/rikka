@@ -11,14 +11,18 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"sync"
 )
 
 // VersionString is the current version of the bot
 const VersionString string = "0.11"
 
 type serviceEntry struct {
+	sync.Mutex
+
 	Service
 	Plugins         map[string]Plugin
+	callbacks       map[string]chan Message
 	messageChannels []chan Message
 }
 
@@ -58,8 +62,9 @@ func (b *Bot) RegisterService(service Service) {
 	}
 	serviceName := service.Name()
 	b.Services[serviceName] = &serviceEntry{
-		Service: service,
-		Plugins: make(map[string]Plugin, 0),
+		Service:   service,
+		Plugins:   make(map[string]Plugin, 0),
+		callbacks: map[string]chan Message{},
 	}
 	b.RegisterPlugin(service, NewHelpPlugin())
 }
@@ -82,7 +87,32 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 		for _, plugin := range plugins {
 			go plugin.Message(b, service, message)
 		}
+		go b.callbacks(service, message)
 	}
+}
+
+func (b *Bot) callbacks(service Service, m Message) {
+	cbs := b.Services[service.Name()].callbacks
+	for u, c := range cbs {
+		if u == m.UserID() {
+			c <- m
+		}
+	}
+}
+
+func (b *Bot) MakeCallback(service Service, uID string) chan Message {
+	n := service.Name()
+	cbs := b.Services[n]
+	m := make(chan Message)
+	cbs.Lock()
+	cbs.callbacks[uID] = m
+	cbs.Unlock()
+	return m
+}
+
+func (b *Bot) CloseCallback(service Service, uID string) {
+	close(b.Services[service.Name()].callbacks[uID])
+	b.Services[service.Name()].callbacks[uID] = nil
 }
 
 // Open will open all the current services and begins listening.

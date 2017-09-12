@@ -255,25 +255,26 @@ func (d *Discord) IsMe(message Message) bool {
 }
 
 // SendMessage sends a message.
-func (d *Discord) SendMessage(channel, message string) error {
+func (d *Discord) SendMessage(channel, message string) (*discordgo.Message, error) {
 	if channel == "" {
 		log.Println("Empty channel could not send message", message)
-		return nil
+		return nil, nil
 	}
 
-	if _, err := d.Session.ChannelMessageSend(channel, message); err != nil {
+	m, err := d.Session.ChannelMessageSend(channel, message)
+	if err != nil {
 		log.Println("Error sending discord message: ", err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return m, nil
 }
 
 // SendAction sends an action.
-func (d *Discord) SendAction(channel, message string) error {
+func (d *Discord) SendAction(channel, message string) (*discordgo.Message, error) {
 	if channel == "" {
 		log.Println("Empty channel could not send message", message)
-		return nil
+		return nil, nil
 	}
 
 	p, err := d.UserChannelPermissions(d.UserID(), channel)
@@ -286,9 +287,9 @@ func (d *Discord) SendAction(channel, message string) error {
 			Color:       d.UserColor(d.UserID(), channel),
 			Description: message,
 		}); err != nil {
-			return err
+			return nil, err
 		}
-		return nil
+		return nil, nil
 	}
 
 	return d.SendMessage(channel, message)
@@ -355,10 +356,10 @@ func (d *Discord) Typing(channel string) error {
 }
 
 // PrivateMessage will send a private message to a user.
-func (d *Discord) PrivateMessage(userID, message string) error {
+func (d *Discord) PrivateMessage(userID, message string) (*discordgo.Message, error) {
 	c, err := d.Session.UserChannelCreate(userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return d.SendMessage(c.ID, message)
 }

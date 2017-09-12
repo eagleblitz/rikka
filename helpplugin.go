@@ -101,7 +101,7 @@ func (p *helpPlugin) Message(bot *Bot, service Service, message Message) {
 					service.PrivateMessage(message.UserID(), strings.Join(help, "\n"))
 				} else {
 					for _, h := range help {
-						if err := service.PrivateMessage(message.UserID(), h); err != nil {
+						if _, err := service.PrivateMessage(message.UserID(), h); err != nil {
 							break
 						}
 					}
@@ -111,7 +111,7 @@ func (p *helpPlugin) Message(bot *Bot, service Service, message Message) {
 					service.SendMessage(message.Channel(), strings.Join(help, "\n"))
 				} else {
 					for _, h := range help {
-						if err := service.SendMessage(message.Channel(), h); err != nil {
+						if _, err := service.SendMessage(message.Channel(), h); err != nil {
 							break
 						}
 					}

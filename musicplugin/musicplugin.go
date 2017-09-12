@@ -138,7 +138,7 @@ func (p *MusicPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.
 	}
 
 	help := []string{
-		rikka.CommandHelp(service, "music", "<command>", "Music, see `help music`")[0],
+		rikka.CommandHelp(service, "music", "<command>", fmt.Sprintf("Music, see `%shelp music`", service.CommandPrefix()))[0],
 	}
 
 	if detailed {
@@ -270,20 +270,20 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 			u, err := url.ParseRequestURI(parts[1])
 			if err != nil {
 				service.SendMessage(message.Channel(), "Searching youtube...")
-				err = p.enqueue(vc, parts[1], service, message, true)
+				err = p.enqueue(bot, vc, parts[1], service, message, true)
 				if err != nil {
 					service.SendMessage(message.Channel(), err.Error())
 					return
 				}
 			}
-			err = p.enqueue(vc, u.String(), service, message, false)
+			err = p.enqueue(bot, vc, u.String(), service, message, false)
 			if err != nil {
 				service.SendMessage(message.Channel(), err.Error())
 			}
 			return
 		}
 		service.SendMessage(message.Channel(), "Searching youtube...")
-		err = p.enqueue(vc, strings.Join(parts[1:], " "), service, message, true)
+		err = p.enqueue(bot, vc, strings.Join(parts[1:], " "), service, message, true)
 		if err != nil {
 			service.SendMessage(message.Channel(), err.Error())
 		}
@@ -341,7 +341,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		}
 		vc.control <- Resume
 
-	case "info":
+	case "info", "np":
 		// report player settings, queue info, and current song
 
 		if vc == nil {
@@ -482,7 +482,7 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 // }
 
 // enqueue a song/playlest to a VoiceConnections Queue
-func (p *MusicPlugin) enqueue(vc *voiceConnection, url string, service rikka.Service, message rikka.Message, search bool) (err error) {
+func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, service rikka.Service, message rikka.Message, search bool) (err error) {
 
 	if vc == nil {
 		return fmt.Errorf("Cannot enqueue to nil voice connection")
@@ -506,7 +506,7 @@ func (p *MusicPlugin) enqueue(vc *voiceConnection, url string, service rikka.Ser
 
 	var cmd *exec.Cmd
 	if search {
-		cmd = exec.Command("youtube-dl", "-i", "-j", "--youtube-skip-dash-manifest", fmt.Sprintf(`ytsearch1:%s`, url))
+		cmd = exec.Command("youtube-dl", "-i", "-j", "--youtube-skip-dash-manifest", fmt.Sprintf(`ytsearch5:%s`, url))
 	} else {
 		cmd = exec.Command("youtube-dl", "-i", "-j", "--youtube-skip-dash-manifest", url)
 	}
@@ -534,6 +534,83 @@ func (p *MusicPlugin) enqueue(vc *voiceConnection, url string, service rikka.Ser
 
 	scanner := bufio.NewScanner(output)
 
+	if search {
+		res := []song{}
+		for scanner.Scan() {
+			s := song{}
+			err = json.Unmarshal(scanner.Bytes(), &s)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			s.TextChannelID = message.Channel()
+			s.AddedBy = message.UserName()
+
+			res = append(res, s)
+		}
+		if len(res) < 1 {
+			service.SendMessage(message.Channel(), fmt.Sprintf("Your search term `%s` returned no results", url))
+			return
+		}
+		if len(res) == 1 {
+			vc.Lock()
+			vc.Queue = append(vc.Queue, res[0])
+			vc.Unlock()
+			service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", res[0].Title, res[0].AddedBy, len(vc.Queue)))
+			return
+		}
+		msg := []string{}
+		for i, e := range res {
+			i++
+			msg = append(msg, fmt.Sprintf("`%v`: `%s`", i, e.Title))
+		}
+		msg = append(msg, fmt.Sprintf("\nType `exit` to exit the menu"))
+		dd, _ := service.SendMessage(message.Channel(), strings.Join(msg, "\n"))
+		defer service.DeleteMessage(message.Channel(), dd.ID)
+
+		m := bot.MakeCallback(service, message.UserID())
+		defer bot.CloseCallback(service, message.UserID())
+		e := 0
+		for {
+			ms := <-m
+
+			if ms.Message() == "exit" {
+				service.SendMessage(message.Channel(), "Exiting menu")
+				return nil
+			}
+
+			n, err := strconv.Atoi(ms.Message())
+			if e >= 5 {
+				service.SendMessage(message.Channel(), "BAKA!! Seems you cant type a correct response. Exiting menu")
+				return nil
+			}
+			if err != nil {
+				service.SendMessage(message.Channel(), fmt.Sprintf("Please type a number between 1 and 5. You typed `%s`.", ms.Message()))
+				e++
+				continue
+			}
+
+			if n > 5 || n < 1 {
+				service.SendMessage(message.Channel(), fmt.Sprintf("Please type a number between 1 and 5. You typed `%s`.", ms.Message()))
+				e++
+				continue
+			}
+
+			service.SendMessage(message.Channel(), fmt.Sprintf("You picked number %v.", n))
+			s := res[n-1]
+			s.TextChannelID = message.Channel()
+			s.AddedBy = message.UserName()
+
+			vc.Lock()
+			vc.Queue = append(vc.Queue, s)
+			vc.Unlock()
+			service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
+			songsAdded++
+			return nil
+		}
+	}
+
 	for scanner.Scan() {
 		s := song{}
 		err = json.Unmarshal(scanner.Bytes(), &s)
@@ -549,8 +626,8 @@ func (p *MusicPlugin) enqueue(vc *voiceConnection, url string, service rikka.Ser
 		vc.Queue = append(vc.Queue, s)
 		vc.Unlock()
 		service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
+		songsAdded++
 	}
-	songsAdded++
 	return
 }
 
@@ -627,7 +704,7 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 			timeLeft += time.Duration(v.Duration)
 		}
 		timeLeft *= time.Second
-		service.SendMessage(vc.playing.TextChannelID, fmt.Sprintf("Now playing %s as requested by %s\nSongs left in queue: %v [%s total]", Song.Title, Song.AddedBy, len(vc.Queue), timeLeft.String()))
+		service.SendMessage(vc.playing.TextChannelID, fmt.Sprintf("Now playing *%s* as requested by *%s*\nSongs left in queue: `%v` `[%s total]`", Song.Title, Song.AddedBy, len(vc.Queue), timeLeft.String()))
 		p.play(vc, close, control, Song)
 		vc.playing = nil
 
@@ -671,7 +748,7 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	}
 	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
 
-	dca := exec.Command("dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
+	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
 	//dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
 	dca.Stdin = ffmpegbuf
 	//if vc.debug {

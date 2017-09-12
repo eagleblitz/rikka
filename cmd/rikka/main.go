@@ -10,14 +10,17 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/ThyLeader/rikka"
+	"github.com/ThyLeader/rikka/callbacktesting"
 	"github.com/ThyLeader/rikka/discordavatarplugin"
 	"github.com/ThyLeader/rikka/imageplugin"
 	"github.com/ThyLeader/rikka/inviteplugin"
 	"github.com/ThyLeader/rikka/mathplugin"
 	"github.com/ThyLeader/rikka/misccommands"
 	"github.com/ThyLeader/rikka/musicplugin"
+	"github.com/ThyLeader/rikka/nametrackplugin"
 	"github.com/ThyLeader/rikka/playedplugin"
 	"github.com/ThyLeader/rikka/playingplugin"
+	"github.com/ThyLeader/rikka/pubgplugin"
 	"github.com/ThyLeader/rikka/reminderplugin"
 	"github.com/ThyLeader/rikka/statsplugin"
 )
@@ -104,6 +107,9 @@ func main() {
 	bot.RegisterPlugin(discord, reminderplugin.New())
 	bot.RegisterPlugin(discord, mathplugin.New())
 	bot.RegisterPlugin(discord, imageplugin.New())
+	bot.RegisterPlugin(discord, pubgplugin.New())
+	bot.RegisterPlugin(discord, nametrackplugin.New())
+	bot.RegisterPlugin(discord, callbacktesting.New())
 
 	// Start all our services.
 	bot.Open()

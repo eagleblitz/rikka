@@ -46,15 +46,15 @@ type Service interface {
 	UserID() string
 	Open() (<-chan Message, error)
 	IsMe(message Message) bool
-	SendMessage(channel, message string) error
-	SendAction(channel, message string) error
+	SendMessage(channel, message string) (*discordgo.Message, error)
+	SendAction(channel, message string) (*discordgo.Message, error)
 	DeleteMessage(channel, messageID string) error
 	SendFile(channel, name string, r io.Reader) error
 	BanUser(channel, userID string, duration int) error
 	UnbanUser(channel, userID string) error
 	Join(join string) error
 	Typing(channel string) error
-	PrivateMessage(userID, messageID string) error
+	PrivateMessage(userID, messageID string) (*discordgo.Message, error)
 	IsBotOwner(message Message) bool
 	IsPrivate(message Message) bool
 	IsChannelOwner(message Message) bool
@@ -69,6 +69,8 @@ type Service interface {
 	Channel(channel string) (*discordgo.Channel, error)
 	Member(guildID, userID string) (*discordgo.Member, error)
 	TimestampForID(id string) (time.Time, error)
+	// MakeCallback(service Service, uID string) chan Message
+	// CloseCallback(service Service, uID string)
 }
 
 // LoadFunc is the function signature for a load handler.
