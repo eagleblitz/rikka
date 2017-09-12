@@ -557,8 +557,9 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 		if len(res) == 1 {
 			vc.Lock()
 			vc.Queue = append(vc.Queue, res[0])
+			vcLen := len(vc.Queue)
 			vc.Unlock()
-			service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", res[0].Title, res[0].AddedBy, len(vc.Queue)))
+			res[0].announceSongAdded(service, message.Channel(), vcLen)
 			return
 		}
 		msg := []string{}
@@ -620,8 +621,9 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 
 				vc.Lock()
 				vc.Queue = append(vc.Queue, s)
+				vcLen := len(vc.Queue)
 				vc.Unlock()
-				service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
+				s.announceSongAdded(service, message.Channel(), vcLen)
 				songsAdded++
 				return nil
 			case <-timeout:
@@ -644,17 +646,26 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 
 		vc.Lock()
 		vc.Queue = append(vc.Queue, s)
+		vcLen := len(vc.Queue)
 		vc.Unlock()
-		service.SendMessage(message.Channel(), fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, len(vc.Queue)))
+		s.announceSongAdded(service, message.Channel(), vcLen)
 		songsAdded++
 	}
 	return
 }
 
+// i had a bunch of different ones scattered around so hopefully this will clean things up in terms of consistency
+func (s *song) announceSongAdded(service rikka.Service, channel string, vcLen int) {
+	service.SendMessage(channel, fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, vcLen))
+}
+
+func (s *song) announceSongPlaying(service rikka.Service, channel string, vcLen int, timeLeft string) {
+	service.SendMessage(channel, fmt.Sprintf("Now playing *%s* as requested by *%s*\nSongs left in queue: `%v` `[%s total]`", s.Title, s.AddedBy, vcLen, timeLeft))
+}
+
 // little wrapper function for start() to fire it off in a
 // go routine if it is not already running.
 func (p *MusicPlugin) gostart(vc *voiceConnection, service rikka.Service) (err error) {
-
 	vc.Lock()
 
 	if vc == nil {
@@ -688,7 +699,7 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 	}
 
 	var i int
-	var Song song
+	var s song
 
 	// main loop keeps this going until close
 	for {
@@ -709,8 +720,9 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 
 		// Get song to play and store it in local Song var
 		vc.Lock()
-		if len(vc.Queue)-1 >= i {
-			Song = vc.Queue[i]
+		vcLen := len(vc.Queue)
+		if vcLen-1 >= i {
+			s = vc.Queue[i]
 		} else {
 			i = 0
 			vc.Unlock()
@@ -718,14 +730,14 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 		}
 		vc.Unlock()
 
-		vc.playing = &Song
+		vc.playing = &s
 		timeLeft := time.Duration(0)
 		for _, v := range vc.Queue {
 			timeLeft += time.Duration(v.Duration)
 		}
 		timeLeft *= time.Second
-		service.SendMessage(vc.playing.TextChannelID, fmt.Sprintf("Now playing *%s* as requested by *%s*\nSongs left in queue: `%v` `[%s total]`", Song.Title, Song.AddedBy, len(vc.Queue), timeLeft.String()))
-		p.play(vc, close, control, Song)
+		s.announceSongPlaying(service, vc.playing.TextChannelID, vcLen, timeLeft.String())
+		p.play(vc, close, control, s)
 		vc.playing = nil
 
 		vc.Lock()
