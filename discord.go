@@ -116,6 +116,11 @@ func (m *DiscordMessage) Mentions() []*discordgo.User {
 	return m.DiscordgoMessage.Mentions
 }
 
+//
+func (m *DiscordMessage) Timestamp() (time.Time, error) {
+	return m.DiscordgoMessage.Timestamp.Parse()
+}
+
 // Discord is a Service provider for Discord.
 type Discord struct {
 	args        []interface{}
@@ -390,7 +395,10 @@ func (d *Discord) IsBotOwner(message Message) bool {
 // IsPrivate returns whether or not a message was private.
 func (d *Discord) IsPrivate(message Message) bool {
 	c, err := d.Channel(message.Channel())
-	return err == nil && c.IsPrivate
+	if err != nil {
+		return false
+	}
+	return c.Type == 1
 }
 
 // IsChannelOwner returns whether or not the sender of a message is a moderator.
@@ -541,4 +549,9 @@ func (d *Discord) TimestampForID(id string) (time.Time, error) {
 		return time.Unix(0, 0), err
 	}
 	return time.Unix(((_id>>22)+1420070400000)/1000, 0), nil
+}
+
+//
+func (d *Discord) EditMessage(cID, mID, content string) (*discordgo.Message, error) {
+	return d.Session.ChannelMessageEdit(cID, mID, content)
 }

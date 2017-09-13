@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -44,18 +45,54 @@ func (p *nameTrackPlugin) Message(bot *rikka.Bot, service rikka.Service, message
 		user = message.UserID()
 	} else {
 		if parts[0] == "scan" {
+			if !service.IsBotOwner(message) {
+				service.SendMessage(message.Channel(), "Only the bot owner can use this feature")
+				return
+			}
 			p.testScan(message.Guild(), service)
 			service.SendMessage(message.Channel(), "scanned guild "+message.Guild())
 			return
 		}
-		user = parts[0]
+		if parts[0] == "scanall" {
+			if !service.IsBotOwner(message) {
+				service.SendMessage(message.Channel(), "Only the bot owner can use this feature")
+				return
+			}
+			p.scanAll(service)
+			service.SendMessage(message.Channel(), "scanning all..")
+			return
+		}
+
+		userIDRegex := regexp.MustCompile("<@!?([0-9]*)>")
+		query := strings.Join(strings.Split(message.RawMessage(), " ")[1:], " ")
+		if m := userIDRegex.FindStringSubmatch(query); m != nil {
+			user = m[1]
+		}
+
+		if user == "" {
+			user = parts[0]
+		}
 	}
 
 	u, ok := p.Names[user]
 	if !ok {
-		service.SendMessage(message.Channel(), fmt.Sprintf("User `%s` not found", user))
+		service.SendMessage(message.Channel(), fmt.Sprintf("User `%s` not found\nPlease use the user's ID or mention them. Username searches coming soon:tm:", user))
 		return
 	}
+	/*embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: fmt.Sprintf("*First seen %s, last update %s*", humanize.Time(u.FirstSeen), lc),
+		Fields: []*discordgo.MessageEmbedField{
+			&discordgo.MessageEmbedField{Name: "Games", Value: statuses, Inline: false},
+		},
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: url,
+		},
+		Color: 0x79c879,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: fmt.Sprintf("Data valid as of %s", time.Now().Format(time.UnixDate)),
+		},
+	}*/
 	service.SendMessage(message.Channel(), strings.Join(u, ", "))
 }
 
@@ -63,13 +100,14 @@ func (p *nameTrackPlugin) Run(bot *rikka.Bot, service rikka.Service) {
 	discord := service.(*rikka.Discord)
 
 	discord.Session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
+		fmt.Println("ready")
 		for _, g := range r.Guilds {
-			fmt.Println("ready")
-			for i, m := range g.Members {
-				fmt.Println(i)
+			for _, m := range g.Members {
 				p.update(m.User)
 			}
 		}
+
+		p.scanAll(service)
 	})
 
 	discord.Session.AddHandler(func(s *discordgo.Session, g *discordgo.GuildCreate) {
@@ -108,25 +146,39 @@ func (p *nameTrackPlugin) testScan(gID string, service rikka.Service) {
 	}
 }
 
+func (p *nameTrackPlugin) scanAll(service rikka.Service) {
+	discord := service.(*rikka.Discord)
+
+	fmt.Println("scanning all")
+	for _, g := range discord.Session.State.Ready.Guilds {
+		if g.Unavailable {
+			fmt.Println("guild unavailable")
+			continue
+		}
+		for _, m := range g.Members {
+			p.update(m.User)
+		}
+	}
+}
+
 func (p *nameTrackPlugin) update(u *discordgo.User) {
 	if u.Username == "" {
 		return
 	}
-	_, ok := p.Names[u.ID]
+
+	p.Lock()
+	n, ok := p.Names[u.ID]
 	if !ok {
-		p.Lock()
 		p.Names[u.ID] = []string{u.Username}
-		p.Unlock()
-		fmt.Println("Updated " + u.Username)
+		fmt.Println("update new " + u.Username)
 		return
 	}
-	if !searchNicks(p.Names[u.ID], u.Username) {
-		p.Lock()
+	if !searchNicks(n, u.Username) {
 		p.Names[u.ID] = append(p.Names[u.ID], u.Username)
-		p.Unlock()
-		fmt.Println("Updated " + u.Username)
+		fmt.Println("update changed " + u.Username)
 		return
 	}
+	p.Unlock()
 }
 
 // true if current nickname was already recorded, false if not
@@ -147,7 +199,7 @@ func (p *nameTrackPlugin) Help(bot *rikka.Bot, service rikka.Service, message ri
 	if detailed {
 		return nil
 	}
-	return rikka.CommandHelp(service, "pubg", "nick", "")
+	return rikka.CommandHelp(service, "names", "[@username]", "See a user's past usernames")
 }
 
 func (p *nameTrackPlugin) Name() string {

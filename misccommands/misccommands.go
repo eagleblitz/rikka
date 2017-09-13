@@ -74,4 +74,27 @@ func MessageIDTS(bot *rikka.Bot, service rikka.Service, message rikka.Message, c
 	service.SendMessage(message.Channel(), fmt.Sprintf("`%s`", t.UTC().Format(time.UnixDate)))
 }
 
-var HelpIDTS = rikka.NewCommandHelp("[id or mention]", "Parses a snowflake (id) and returns a timestamp.")
+var HelpIDTS = rikka.NewCommandHelp("[@username]", "Parses a snowflake (id) and returns a timestamp.")
+
+func MessageSupport(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
+	service.SendMessage(message.Channel(), "You can join the support server here: https://discord.gg/CB5sXP")
+}
+
+var HelpSupport = rikka.NewCommandHelp("", "Gives an invite link to join the support server.")
+
+func MessagePing(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
+	p, _ := service.SendMessage(message.Channel(), "Pong!")
+	t1, err := message.Timestamp()
+	if err != nil {
+		service.SendMessage(message.Channel(), "There was an error parsing the timestamp "+err.Error())
+		return
+	}
+	t2, err := p.Timestamp.Parse()
+	if err != nil {
+		service.SendMessage(message.Channel(), "There was an error parsing the timestamp "+err.Error())
+		return
+	}
+	service.EditMessage(p.ChannelID, p.ID, fmt.Sprintf("Pong! - `%s`", t2.Sub(t1).String()))
+}
+
+var HelpPing = rikka.NewCommandHelp("", "Shows bot latency.")

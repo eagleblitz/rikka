@@ -151,7 +151,6 @@ func (p *playedPlugin) Run(bot *rikka.Bot, service rikka.Service) {
 			return
 		}
 		if t.Before(time.Now().Add(-1 * time.Minute)) {
-			fmt.Println("gotem coach")
 			return
 		}
 

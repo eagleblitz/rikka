@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/ThyLeader/rikka"
 )
@@ -38,7 +39,32 @@ func messageFunc(bot *rikka.Bot, service rikka.Service, message rikka.Message) {
 			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
 			return
 		}
-		service.SendFile(message.Channel(), "lewd.png", i.Body)
+		service.SendFile(message.Channel(), "lewd."+strings.Split(r.Path, ".")[1], i.Body)
+		h.Body.Close()
+		i.Body.Close()
+		return
+	}
+
+	if rikka.MatchesCommand(service, "kiss", message) {
+		service.Typing(message.Channel())
+		var r response
+		h, err := http.Get("https://rra.ram.moe/i/r?type=kiss")
+		if err != nil {
+			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
+			return
+		}
+		body, err := ioutil.ReadAll(h.Body)
+		if err != nil {
+			return
+		}
+		json.Unmarshal(body, &r)
+
+		i, err := http.Get("https://rra.ram.moe" + r.Path)
+		if err != nil {
+			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
+			return
+		}
+		service.SendFile(message.Channel(), "lewd."+strings.Split(r.Path, ".")[1], i.Body)
 		h.Body.Close()
 		i.Body.Close()
 		return

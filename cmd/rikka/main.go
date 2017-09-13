@@ -10,17 +10,15 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/ThyLeader/rikka"
-	"github.com/ThyLeader/rikka/callbacktesting"
 	"github.com/ThyLeader/rikka/discordavatarplugin"
+	"github.com/ThyLeader/rikka/emojiplugin"
 	"github.com/ThyLeader/rikka/imageplugin"
 	"github.com/ThyLeader/rikka/inviteplugin"
 	"github.com/ThyLeader/rikka/mathplugin"
 	"github.com/ThyLeader/rikka/misccommands"
 	"github.com/ThyLeader/rikka/musicplugin"
-	"github.com/ThyLeader/rikka/nametrackplugin"
 	"github.com/ThyLeader/rikka/playedplugin"
 	"github.com/ThyLeader/rikka/playingplugin"
-	"github.com/ThyLeader/rikka/pubgplugin"
 	"github.com/ThyLeader/rikka/reminderplugin"
 	"github.com/ThyLeader/rikka/statsplugin"
 )
@@ -75,13 +73,16 @@ func main() {
 	// Generally CommandPlugins don't hold state, so we share one instance of the command plugin for all services.
 	cp := rikka.NewCommandPlugin()
 	cp.AddCommand("invite", inviteplugin.InviteCommand, inviteplugin.InviteHelp)
-	cp.AddCommand("join", inviteplugin.InviteCommand, inviteplugin.InviteHelp)
+	cp.AddCommand("join", inviteplugin.InviteCommand, nil)
 	cp.AddCommand("stats", statsplugin.StatsCommand, statsplugin.StatsHelp)
 	cp.AddCommand("info", statsplugin.StatsCommand, nil)
 	cp.AddCommand("stat", statsplugin.StatsCommand, nil)
 	cp.AddCommand("guilds", statsplugin.GuildsCommand, nil)
 	cp.AddCommand("pepe", misccommands.MessagePeepo, nil)
 	cp.AddCommand("ts", misccommands.MessageIDTS, misccommands.HelpIDTS)
+	cp.AddCommand("support", misccommands.MessageSupport, misccommands.HelpSupport)
+	cp.AddCommand("server", misccommands.MessageSupport, nil)
+	cp.AddCommand("ping", misccommands.MessagePing, misccommands.HelpPing)
 
 	cp.AddCommand("quit", func(bot *rikka.Bot, service rikka.Service, message rikka.Message, args string, parts []string) {
 		if service.IsBotOwner(message) {
@@ -107,9 +108,10 @@ func main() {
 	bot.RegisterPlugin(discord, reminderplugin.New())
 	bot.RegisterPlugin(discord, mathplugin.New())
 	bot.RegisterPlugin(discord, imageplugin.New())
-	bot.RegisterPlugin(discord, pubgplugin.New())
-	bot.RegisterPlugin(discord, nametrackplugin.New())
-	bot.RegisterPlugin(discord, callbacktesting.New())
+	//bot.RegisterPlugin(discord, pubgplugin.New())
+	//bot.RegisterPlugin(discord, nametrackplugin.New())
+	//bot.RegisterPlugin(discord, callbacktesting.New())
+	bot.RegisterPlugin(discord, emojiplugin.New())
 
 	// Start all our services.
 	bot.Open()

@@ -441,7 +441,8 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 		return
 	}
 
-	if c.Type != "voice" {
+	// 2 == GUILD_VOICE
+	if c.Type != 2 {
 		err = fmt.Errorf("That's not a voice channel.")
 		return
 	}
@@ -536,6 +537,7 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 	scanner := bufio.NewScanner(output)
 
 	if search {
+		// TODO: turn this all into a single function
 		res := []song{}
 		for scanner.Scan() {
 			s := song{}

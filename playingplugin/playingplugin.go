@@ -22,10 +22,6 @@ func (p *playingPlugin) Name() string {
 
 // Load will load plugin state from a byte array.
 func (p *playingPlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte) error {
-	if service.Name() != rikka.DiscordServiceName {
-		panic("Playing Plugin only supports Discord.")
-	}
-
 	if data != nil {
 		if err := json.Unmarshal(data, p); err != nil {
 			log.Println("Error loading data", err)
@@ -33,9 +29,15 @@ func (p *playingPlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte)
 	}
 
 	if p.Game != "" {
-		service.(*rikka.Discord).Session.UpdateStreamingStatus(0, p.Game, p.URL)
+		err := service.(*rikka.Discord).Session.UpdateStreamingStatus(0, p.Game, p.URL)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	} else {
-		service.(*rikka.Discord).Session.UpdateStatus(0, p.Game)
+		err := service.(*rikka.Discord).Session.UpdateStatus(0, p.Game)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 
 	return nil
@@ -70,6 +72,7 @@ func (p *playingPlugin) messageFunc(bot *rikka.Bot, service rikka.Service, messa
 	}
 
 	if !service.IsBotOwner(message) {
+		fmt.Println("not owner")
 		return
 	}
 
@@ -80,9 +83,15 @@ func (p *playingPlugin) messageFunc(bot *rikka.Bot, service rikka.Service, messa
 	p.Game = strings.Trim(split[0], " ")
 	if len(split) > 1 {
 		p.URL = strings.Trim(split[1], " ")
-		service.(*rikka.Discord).Session.UpdateStreamingStatus(0, p.Game, p.URL)
+		err := service.(*rikka.Discord).Session.UpdateStreamingStatus(0, p.Game, p.URL)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	} else {
-		service.(*rikka.Discord).Session.UpdateStatus(0, p.Game)
+		err := service.(*rikka.Discord).Session.UpdateStatus(0, p.Game)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 }
 
