@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"time"
@@ -123,6 +125,8 @@ func main() {
 	signal.Notify(c, os.Interrupt, os.Kill)
 
 	t := time.Tick(1 * time.Minute)
+
+	go http.ListenAndServe("localhost:6060", nil)
 
 out:
 	for {

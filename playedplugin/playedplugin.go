@@ -11,22 +11,21 @@ import (
 	"github.com/ThyLeader/rikka"
 	"github.com/bwmarrin/discordgo"
 	"github.com/dustin/go-humanize"
-	"github.com/go-redis/redis"
 )
 
-func init() {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "192.168.1.121:6379",
-		Password: "",
-		DB:       0,
-	})
+// func init() {
+// 	client := redis.NewClient(&redis.Options{
+// 		Addr:     "192.168.1.121:6379",
+// 		Password: "",
+// 		DB:       0,
+// 	})
 
-	pong, err := client.Ping().Result()
-	if err != nil {
-		return
-	}
-	fmt.Println(pong)
-}
+// 	pong, err := client.Ping().Result()
+// 	if err != nil {
+// 		return
+// 	}
+// 	fmt.Println(pong)
+// }
 
 type playedEntry struct {
 	Name     string

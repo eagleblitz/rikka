@@ -64,7 +64,7 @@ func (b *Bot) RegisterService(service Service) {
 	b.Services[serviceName] = &serviceEntry{
 		Service:   service,
 		Plugins:   make(map[string]Plugin, 0),
-		callbacks: map[string]chan Message{},
+		callbacks: make(map[string]chan Message, 0),
 	}
 	b.RegisterPlugin(service, NewHelpPlugin())
 }
@@ -92,12 +92,17 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 }
 
 func (b *Bot) callbacks(service Service, m Message) {
-	cbs := b.Services[service.Name()].callbacks
-	for u, c := range cbs {
-		if u == m.UserID() {
-			c <- m
-		}
+	c, ok := b.Services[service.Name()].callbacks[m.UserID()]
+	if !ok {
+		return
 	}
+	c <- m
+	// cbs := b.Services[service.Name()].callbacks
+	// for u, c := range cbs {
+	// 	if u == m.UserID() {
+	// 		c <- m
+	// 	}
+	// }
 }
 
 func (b *Bot) MakeCallback(service Service, uID string) chan Message {
@@ -111,8 +116,12 @@ func (b *Bot) MakeCallback(service Service, uID string) chan Message {
 }
 
 func (b *Bot) CloseCallback(service Service, uID string) {
+	n := service.Name()
+	cbs := b.Services[n]
 	close(b.Services[service.Name()].callbacks[uID])
-	b.Services[service.Name()].callbacks[uID] = nil
+	cbs.Lock()
+	delete(b.Services[service.Name()].callbacks, uID)
+	cbs.Unlock()
 }
 
 // Open will open all the current services and begins listening.

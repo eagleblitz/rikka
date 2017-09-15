@@ -10,6 +10,7 @@ import (
 
 	"github.com/ThyLeader/rikka"
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-redis/redis"
 )
 
 type nameTrackPlugin struct {
@@ -18,6 +19,8 @@ type nameTrackPlugin struct {
 	Names map[string][]string
 }
 
+var client *redis.Client
+
 func (p *nameTrackPlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte) error {
 	if data != nil {
 		if err := json.Unmarshal(data, p); err != nil {
@@ -25,6 +28,12 @@ func (p *nameTrackPlugin) Load(bot *rikka.Bot, service rikka.Service, data []byt
 			return err
 		}
 	}
+	client = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+
 	go p.Run(bot, service)
 	return nil
 }
@@ -34,7 +43,7 @@ func (p *nameTrackPlugin) Message(bot *rikka.Bot, service rikka.Service, message
 		return
 	}
 
-	if !rikka.MatchesCommand(service, "names", message) {
+	if !rikka.MatchesCommand(service, "names", message) && !rikka.MatchesCommand(service, "nicks", message) {
 		return
 	}
 
@@ -74,8 +83,8 @@ func (p *nameTrackPlugin) Message(bot *rikka.Bot, service rikka.Service, message
 		}
 	}
 
-	u, ok := p.Names[user]
-	if !ok {
+	u := client.SMembers("names:" + user).Val()
+	if len(u) < 1 {
 		service.SendMessage(message.Channel(), fmt.Sprintf("User `%s` not found\nPlease use the user's ID or mention them. Username searches coming soon:tm:", user))
 		return
 	}
@@ -103,7 +112,7 @@ func (p *nameTrackPlugin) Run(bot *rikka.Bot, service rikka.Service) {
 		fmt.Println("ready")
 		for _, g := range r.Guilds {
 			for _, m := range g.Members {
-				p.update(m.User)
+				p.update(m.User, m.Nick)
 			}
 		}
 
@@ -115,24 +124,24 @@ func (p *nameTrackPlugin) Run(bot *rikka.Bot, service rikka.Service) {
 			return
 		}
 		for _, m := range g.Members {
-			p.update(m.User)
+			p.update(m.User, m.Nick)
 		}
 	})
 
 	discord.Session.AddHandler(func(s *discordgo.Session, r *discordgo.GuildMemberUpdate) {
-		p.update(r.User)
+		p.update(r.User, r.Nick)
 	})
 
 	discord.Session.AddHandler(func(s *discordgo.Session, r *discordgo.GuildMemberAdd) {
-		p.update(r.User)
+		p.update(r.User, r.Nick)
 	})
 
 	discord.Session.AddHandler(func(s *discordgo.Session, r *discordgo.UserUpdate) {
-		p.update(r.User)
+		p.update(r.User, "")
 	})
 
 	discord.Session.AddHandler(func(s *discordgo.Session, r *discordgo.PresenceUpdate) {
-		p.update(r.User)
+		p.update(r.User, r.Nick)
 	})
 }
 
@@ -142,7 +151,7 @@ func (p *nameTrackPlugin) testScan(gID string, service rikka.Service) {
 	g, _ := discord.Session.Guild(gID)
 
 	for _, m := range g.Members {
-		p.update(m.User)
+		p.update(m.User, m.Nick)
 	}
 }
 
@@ -156,29 +165,35 @@ func (p *nameTrackPlugin) scanAll(service rikka.Service) {
 			continue
 		}
 		for _, m := range g.Members {
-			p.update(m.User)
+			p.update(m.User, m.Nick)
 		}
 	}
 }
 
-func (p *nameTrackPlugin) update(u *discordgo.User) {
-	if u.Username == "" {
-		return
+func (p *nameTrackPlugin) update(u *discordgo.User, nick string) {
+	if u.Username != "" {
+		fmt.Println("username sent")
+		client.SAdd("names:"+u.ID, u.Username)
 	}
 
-	p.Lock()
-	n, ok := p.Names[u.ID]
-	if !ok {
-		p.Names[u.ID] = []string{u.Username}
-		fmt.Println("update new " + u.Username)
-		return
+	if nick != "" {
+		fmt.Println("nickname sent")
+		client.SAdd("nicks:"+u.ID, nick)
 	}
-	if !searchNicks(n, u.Username) {
-		p.Names[u.ID] = append(p.Names[u.ID], u.Username)
-		fmt.Println("update changed " + u.Username)
-		return
-	}
-	p.Unlock()
+
+	// p.Lock()
+	// n, ok := p.Names[u.ID]
+	// if !ok {
+	// 	p.Names[u.ID] = []string{u.Username}
+	// 	fmt.Println("update new " + u.Username)
+	// 	return
+	// }
+	// if !searchNicks(n, u.Username) {
+	// 	p.Names[u.ID] = append(p.Names[u.ID], u.Username)
+	// 	fmt.Println("update changed " + u.Username)
+	// 	return
+	// }
+	// p.Unlock()
 }
 
 // true if current nickname was already recorded, false if not
