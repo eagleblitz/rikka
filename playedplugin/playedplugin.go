@@ -250,7 +250,7 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		switch len(parts) {
 		case 1:
 			id = parts[0]
-			m, err := service.Member(message.Guild(), id)
+			m, err := service.Member(message.GuildID(), id)
 			if err != nil {
 				service.SendMessage(message.Channel(), "There was an error! Please report this to the devs\n"+err.Error())
 				log.Println(err.Error())

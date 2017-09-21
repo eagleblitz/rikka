@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"time"
@@ -12,14 +14,17 @@ import (
 	"github.com/ThyLeader/rikka"
 	"github.com/ThyLeader/rikka/discordavatarplugin"
 	"github.com/ThyLeader/rikka/emojiplugin"
+	"github.com/ThyLeader/rikka/feedbackplugin"
 	"github.com/ThyLeader/rikka/imageplugin"
 	"github.com/ThyLeader/rikka/inviteplugin"
 	"github.com/ThyLeader/rikka/mathplugin"
 	"github.com/ThyLeader/rikka/misccommands"
 	"github.com/ThyLeader/rikka/musicplugin"
+	"github.com/ThyLeader/rikka/nametrackplugin"
 	"github.com/ThyLeader/rikka/playedplugin"
 	"github.com/ThyLeader/rikka/playingplugin"
 	"github.com/ThyLeader/rikka/reminderplugin"
+	"github.com/ThyLeader/rikka/seenplugin"
 	"github.com/ThyLeader/rikka/statsplugin"
 )
 
@@ -109,9 +114,11 @@ func main() {
 	bot.RegisterPlugin(discord, mathplugin.New())
 	bot.RegisterPlugin(discord, imageplugin.New())
 	//bot.RegisterPlugin(discord, pubgplugin.New())
-	//bot.RegisterPlugin(discord, nametrackplugin.New())
+	bot.RegisterPlugin(discord, nametrackplugin.New())
 	//bot.RegisterPlugin(discord, callbacktesting.New())
 	bot.RegisterPlugin(discord, emojiplugin.New())
+	bot.RegisterPlugin(discord, seenplugin.New())
+	bot.RegisterPlugin(discord, feedbackplugin.New())
 
 	// Start all our services.
 	bot.Open()
@@ -121,6 +128,8 @@ func main() {
 	signal.Notify(c, os.Interrupt, os.Kill)
 
 	t := time.Tick(1 * time.Minute)
+
+	go http.ListenAndServe("localhost:6060", nil)
 
 out:
 	for {

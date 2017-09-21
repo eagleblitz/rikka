@@ -104,21 +104,35 @@ func (m *DiscordMessage) Type() MessageType {
 	return m.MessageType
 }
 
-//
-func (m *DiscordMessage) Guild() string {
+// GuildID returns the guild ID of a message
+func (m *DiscordMessage) GuildID() string {
 	c, _ := m.Discord.Channel(m.Channel())
 	g, _ := m.Discord.Guild(c.GuildID)
 	return g.ID
 }
 
-//
+// Mentions returns an array of mentions contained in a message
 func (m *DiscordMessage) Mentions() []*discordgo.User {
 	return m.DiscordgoMessage.Mentions
 }
 
-//
+// Timestamp returns a parsed timestamp of a message
 func (m *DiscordMessage) Timestamp() (time.Time, error) {
 	return m.DiscordgoMessage.Timestamp.Parse()
+}
+
+// GuildName returns the name of the guild a message belongs to
+func (m *DiscordMessage) GuildName() string {
+	c, _ := m.Discord.Channel(m.Channel())
+	g, _ := m.Discord.Guild(c.GuildID)
+	return g.Name
+}
+
+// Guild returns the discordgo guild object of a message
+func (m *DiscordMessage) Guild() *discordgo.Guild {
+	c, _ := m.Discord.Channel(m.Channel())
+	g, _ := m.Discord.Guild(c.GuildID)
+	return g
 }
 
 // Discord is a Service provider for Discord.

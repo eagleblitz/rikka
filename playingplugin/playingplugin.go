@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/ThyLeader/rikka"
 )
@@ -40,7 +41,30 @@ func (p *playingPlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte)
 		}
 	}
 
+	go p.Persist(bot, service)
+
 	return nil
+}
+
+func (p *playingPlugin) Persist(bot *rikka.Bot, service rikka.Service) {
+	t := time.Tick(1 * time.Hour)
+
+	for {
+		select {
+		case <-t:
+			if p.Game != "" {
+				err := service.(*rikka.Discord).Session.UpdateStreamingStatus(0, p.Game, p.URL)
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+			} else {
+				err := service.(*rikka.Discord).Session.UpdateStatus(0, p.Game)
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+			}
+		}
+	}
 }
 
 // Save will save plugin state to a byte array.

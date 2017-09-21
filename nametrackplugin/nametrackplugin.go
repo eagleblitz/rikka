@@ -58,8 +58,8 @@ func (p *nameTrackPlugin) Message(bot *rikka.Bot, service rikka.Service, message
 				service.SendMessage(message.Channel(), "Only the bot owner can use this feature")
 				return
 			}
-			p.testScan(message.Guild(), service)
-			service.SendMessage(message.Channel(), "scanned guild "+message.Guild())
+			p.testScan(message.GuildID(), service)
+			service.SendMessage(message.Channel(), "scanned guild "+message.GuildID())
 			return
 		}
 		if parts[0] == "scanall" {
@@ -172,12 +172,10 @@ func (p *nameTrackPlugin) scanAll(service rikka.Service) {
 
 func (p *nameTrackPlugin) update(u *discordgo.User, nick string) {
 	if u.Username != "" {
-		fmt.Println("username sent")
 		client.SAdd("names:"+u.ID, u.Username)
 	}
 
 	if nick != "" {
-		fmt.Println("nickname sent")
 		client.SAdd("nicks:"+u.ID, nick)
 	}
 

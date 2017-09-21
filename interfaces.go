@@ -33,8 +33,10 @@ type Message interface {
 	User() *discordgo.User
 	Type() MessageType
 	Mentions() []*discordgo.User
-	Guild() string
+	GuildID() string
 	Timestamp() (time.Time, error)
+	Guild() *discordgo.Guild
+	GuildName() string
 }
 
 // ErrAlreadyJoined is an error dispatched on Join if the bot is already joined to the request.
@@ -71,6 +73,7 @@ type Service interface {
 	Member(guildID, userID string) (*discordgo.Member, error)
 	TimestampForID(id string) (time.Time, error)
 	EditMessage(cID, mID, content string) (*discordgo.Message, error)
+	NicknameForID(userID, userName, channelID string) string
 	// MakeCallback(service Service, uID string) chan Message
 	// CloseCallback(service Service, uID string)
 }

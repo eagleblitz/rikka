@@ -14,6 +14,7 @@ import (
 	"github.com/ThyLeader/rikka"
 	"github.com/ThyLeader/rikka/discordavatarplugin"
 	"github.com/ThyLeader/rikka/emojiplugin"
+	"github.com/ThyLeader/rikka/feedbackplugin"
 	"github.com/ThyLeader/rikka/imageplugin"
 	"github.com/ThyLeader/rikka/inviteplugin"
 	"github.com/ThyLeader/rikka/mathplugin"
@@ -24,6 +25,7 @@ import (
 	"github.com/ThyLeader/rikka/playingplugin"
 	"github.com/ThyLeader/rikka/pubgplugin"
 	"github.com/ThyLeader/rikka/reminderplugin"
+	"github.com/ThyLeader/rikka/seenplugin"
 	"github.com/ThyLeader/rikka/statsplugin"
 )
 
@@ -116,6 +118,8 @@ func main() {
 	bot.RegisterPlugin(discord, nametrackplugin.New())
 	//bot.RegisterPlugin(discord, callbacktesting.New())
 	bot.RegisterPlugin(discord, emojiplugin.New())
+	bot.RegisterPlugin(discord, seenplugin.New())
+	bot.RegisterPlugin(discord, feedbackplugin.New())
 
 	// Start all our services.
 	bot.Open()

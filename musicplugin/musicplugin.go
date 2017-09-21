@@ -618,6 +618,10 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 
 				service.SendMessage(message.Channel(), fmt.Sprintf("You picked number %v.", n))
 				s := res[n-1]
+				if s.Duration > 9000 {
+					service.SendMessage(message.Channel(), "Sorry, but Rikka does not currently allow songs longer than 2.5 hours")
+					return nil
+				}
 				s.TextChannelID = message.Channel()
 				s.AddedBy = message.UserName()
 
@@ -641,6 +645,11 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 		if err != nil {
 			log.Println(err)
 			continue
+		}
+
+		if s.Duration > 9000 {
+			service.SendMessage(message.Channel(), "Sorry, but Rikka does not currently allow songs longer than 2.5 hours")
+			return nil
 		}
 
 		s.TextChannelID = message.Channel()
@@ -782,7 +791,7 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 	}
 	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
 
-	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0", "-b", "128")
+	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0")
 	//dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
 	dca.Stdin = ffmpegbuf
 	//if vc.debug {
