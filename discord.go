@@ -247,6 +247,7 @@ func (d *Discord) Open() (<-chan Message, error) {
 		if err != nil {
 			return nil, err
 		}
+		session.State.TrackPresences = false
 		session.ShardCount = shards
 		session.ShardID = i
 		session.AddHandler(d.onMessageCreate)
