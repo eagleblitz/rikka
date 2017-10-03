@@ -461,13 +461,13 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 		return
 	}
 
-	guildId, err := strconv.Atoi(guild.ID)
+	gID, err := strconv.Atoi(guild.ID)
 	if err != nil {
 		return
 	}
 
 	// NOTE: Setting mute to false, deaf to true.
-	vc.conn, err = p.discord.Sessions[(guildId>>22)%len(p.discord.Sessions)].ChannelVoiceJoin(c.GuildID, cID, false, true)
+	vc.conn, err = p.discord.Sessions[(gID>>22)%len(p.discord.Sessions)].ChannelVoiceJoin(c.GuildID, cID, false, true)
 	if err != nil {
 		return
 	}
