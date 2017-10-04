@@ -2,7 +2,6 @@ package musicplugin
 
 import (
 	"bufio"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/ThyLeader/rikka"
 	"github.com/bwmarrin/discordgo"
+	"github.com/jonas747/dca"
 )
 
 type MusicPlugin struct {
@@ -768,78 +768,40 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		return
 	}
 
+	options := dca.StdEncodeOptions
+	options.RawOutput = true
+	options.Bitrate = 64
+	options.Application = "lowdelay"
+
 	ytdl := exec.Command("youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
-	if vc.debug {
-		ytdl.Stderr = os.Stderr
-	}
 	ytdlout, err := ytdl.StdoutPipe()
 	if err != nil {
-		log.Println("musicplugin: ytdl StdoutPipe err:", err)
+		log.Println("ytdl StdoutPipe err:", err)
 		return
 	}
 	ytdlbuf := bufio.NewReaderSize(ytdlout, 16384)
 
-	ffmpeg := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
-	ffmpeg.Stdin = ytdlbuf
-	if vc.debug {
-		ffmpeg.Stderr = os.Stderr
-	}
-	ffmpegout, err := ffmpeg.StdoutPipe()
+	encodingSession, err := dca.EncodeMem(ytdlbuf, options)
 	if err != nil {
-		log.Println("musicplugin: ffmpeg StdoutPipe err:", err)
+		fmt.Println("error creating encoding session", err.Error())
 		return
 	}
-	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
-
-	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0")
-	//dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
-	dca.Stdin = ffmpegbuf
-	//if vc.debug {
-	dca.Stderr = os.Stderr
-	//}
-	dcaout, err := dca.StdoutPipe()
-	if err != nil {
-		log.Println("musicplugin: dca StdoutPipe err:", err)
-		return
-	}
-	dcabuf := bufio.NewReaderSize(dcaout, 16384)
+	defer encodingSession.Cleanup()
 
 	err = ytdl.Start()
 	if err != nil {
-		log.Println("musicplugin: ytdl Start err:", err)
+		log.Println("ytdl Start err:", err)
 		return
 	}
 	defer func() {
 		go ytdl.Wait()
 	}()
 
-	err = ffmpeg.Start()
-	if err != nil {
-		log.Println("musicplugin: ffmpeg Start err:", err)
-		return
-	}
-	defer func() {
-		go ffmpeg.Wait()
-	}()
-
-	err = dca.Start()
-	if err != nil {
-		log.Println("musicplugin: dca Start err:", err)
-		return
-	}
-
-	defer func() {
-		go dca.Wait()
-	}()
-
-	// header "buffer"
-	var opuslen int16
-
-	// Send "speaking" packet over the voice websocket
 	vc.conn.Speaking(true)
-
-	// Send not "speaking" packet over the websocket when we finish
 	defer vc.conn.Speaking(false)
+
+	d := make(chan error)
+	stream := dca.NewStream(encodingSession, vc.conn, d)
 
 	start := time.Now()
 	for {
@@ -847,6 +809,14 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		case <-close:
 			log.Println("musicplugin: play() exited due to close channel.")
 			return
+		case err = <-d:
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
 		default:
 		}
 		select {
@@ -855,7 +825,8 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 			case Skip:
 				return
 			case Pause:
-				done := false
+				stream.SetPaused(true)
+				b := false
 				for {
 					ctl, ok := <-control
 					if !ok {
@@ -865,49 +836,20 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 					case Skip:
 						return
 					case Resume:
-						done = true
+						stream.SetPaused(false)
+						b = true
 						break
 					}
-
-					if done {
+					if b == true {
 						break
 					}
-
 				}
 			}
 		default:
 		}
 
-		// read dca opus length header
-		err = binary.Read(dcabuf, binary.LittleEndian, &opuslen)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return
-		}
-		if err != nil {
-			log.Println("musicplugin: read opus length from dca err:", err)
-			return
-		}
-
-		// // read opus data from dca
-		opus := make([]byte, opuslen)
-		err = binary.Read(dcabuf, binary.LittleEndian, &opus)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return
-		}
-		if err != nil {
-			log.Println("musicplugin: read opus from dca err:", err)
-			return
-		}
-
-		// Send received PCM to the sendPCM channel
-		vc.conn.OpusSend <- opus
-		// TODO: Add a select and timeout to above
-		// shouldn't ever block longer than maybe 18-25ms
-
-		// this can cause a panic if vc becomes nil while waiting to send
-		// on the opus channel. TODO fix..
 		vc.playing.Remaining = (vc.playing.Duration - int(time.Since(start).Seconds()))
-
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
