@@ -82,19 +82,17 @@ func MessageSupport(bot *rikka.Bot, service rikka.Service, message rikka.Message
 
 var HelpSupport = rikka.NewCommandHelp("", "Gives an invite link to join the support server.")
 
+// MessagePing is the command handler for the ping command
 func MessagePing(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
+	now := time.Now()
 	p, _ := service.SendMessage(message.Channel(), "Pong!")
-	t1, err := message.Timestamp()
+	t, err := p.Timestamp.Parse()
 	if err != nil {
 		service.SendMessage(message.Channel(), "There was an error parsing the timestamp "+err.Error())
 		return
 	}
-	t2, err := p.Timestamp.Parse()
-	if err != nil {
-		service.SendMessage(message.Channel(), "There was an error parsing the timestamp "+err.Error())
-		return
-	}
-	service.EditMessage(p.ChannelID, p.ID, fmt.Sprintf("Pong! - `%s`", t2.Sub(t1).String()))
+	service.EditMessage(message.Channel(), p.ID, fmt.Sprintf("Pong! - `%s`", t.Sub(now).String()))
 }
 
+// HelpPing is the help text for the ping command
 var HelpPing = rikka.NewCommandHelp("", "Shows bot latency.")
