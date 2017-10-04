@@ -50,6 +50,7 @@ type Service interface {
 	Open() (<-chan Message, error)
 	IsMe(message Message) bool
 	SendMessage(channel, message string) (*discordgo.Message, error)
+	SendMessageEmbed(channel string, embed *discordgo.MessageEmbed) (*discordgo.Message, error)
 	SendAction(channel, message string) (*discordgo.Message, error)
 	DeleteMessage(channel, messageID string) error
 	SendFile(channel, name string, r io.Reader) error

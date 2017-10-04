@@ -290,6 +290,22 @@ func (d *Discord) SendMessage(channel, message string) (*discordgo.Message, erro
 	return m, nil
 }
 
+// SendMessageEmbed sends an embed.
+func (d *Discord) SendMessageEmbed(channel string, embed *discordgo.MessageEmbed) (*discordgo.Message, error) {
+	if channel == "" {
+		log.Println("Empty channel could not send message")
+		return nil, nil
+	}
+
+	m, err := d.Session.ChannelMessageSendEmbed(channel, embed)
+	if err != nil {
+		log.Println("Error sending discord message: ", err)
+		return nil, err
+	}
+
+	return m, nil
+}
+
 // SendAction sends an action.
 func (d *Discord) SendAction(channel, message string) (*discordgo.Message, error) {
 	if channel == "" {
