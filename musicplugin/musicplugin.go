@@ -203,10 +203,6 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		service.SendMessage(message.Channel(), strings.Join(p.Help(bot, service, message, true), "\n"))
 
 	case "join":
-		// if !service.IsBotOwner(message) {
-		// 	service.SendMessage(message.Channel(), "Sorry, only bot owner can join, please ask him to run this command.")
-		// 	return
-		// }
 		// join the voice channel of the caller or the provided channel ID
 
 		channelID := ""
@@ -242,9 +238,13 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		// leave voice channel for this Guild
 		if !vcok {
 			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
 		}
 
-		vc.conn.Disconnect()
+		err = vc.conn.Disconnect()
+		if err != nil {
+			log.Println("error disconnecting from vc", err.Error())
+		}
 		delete(p.VoiceConnections, channel.GuildID)
 		service.SendMessage(message.Channel(), "Closed voice connection.")
 
@@ -253,6 +253,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 		if !vcok {
 			service.SendMessage(message.Channel(), fmt.Sprintf("There is no voice connection for this Guild."))
+			return
 		}
 
 		vc.Lock()
@@ -263,6 +264,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 	//case "play":
 	case "add", "play":
 		// Start queue player and optionally enqueue provided songs
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		p.gostart(vc, service)
 
@@ -309,6 +314,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "stop":
 		// stop the queue player
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		if vc.close != nil {
 			close(vc.close)
@@ -322,6 +331,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "skip":
 		// skip current song
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		if vc.control == nil {
 			return
@@ -330,6 +343,11 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "pause":
 		// pause the queue player
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		if vc.control == nil {
 			return
 		}
@@ -337,6 +355,11 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "resume":
 		// resume the queue player
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		if vc.control == nil {
 			return
 		}
@@ -368,6 +391,11 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		service.SendMessage(message.Channel(), msg)
 
 	case "stats":
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		p.Lock()
 		var l time.Duration
 		var s int
@@ -388,6 +416,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "list", "queue":
 		// list top items in the queue
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		if len(vc.Queue) == 0 {
 			service.SendMessage(message.Channel(), "The music queue is empty.")
@@ -424,9 +456,15 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "clear":
 		// clear all items from the queue
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		vc.Lock()
 		vc.Queue = []song{}
 		vc.Unlock()
+		service.SendMessage(message.Channel(), "Queue cleared")
 
 	default:
 		service.SendMessage(message.Channel(), "Unknown music command, try `help music`")
