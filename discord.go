@@ -106,8 +106,16 @@ func (m *DiscordMessage) Type() MessageType {
 
 // GuildID returns the guild ID of a message
 func (m *DiscordMessage) GuildID() string {
-	c, _ := m.Discord.Channel(m.Channel())
-	g, _ := m.Discord.Guild(c.GuildID)
+	c, err := m.Discord.Channel(m.Channel())
+	if err != nil {
+		log.Println("error retrieving channel from state", err)
+		return ""
+	}
+	g, err := m.Discord.Guild(c.GuildID)
+	if err != nil {
+		log.Println("error retrieving channel from state", err)
+		return ""
+	}
 	return g.ID
 }
 
@@ -123,15 +131,31 @@ func (m *DiscordMessage) Timestamp() (time.Time, error) {
 
 // GuildName returns the name of the guild a message belongs to
 func (m *DiscordMessage) GuildName() string {
-	c, _ := m.Discord.Channel(m.Channel())
-	g, _ := m.Discord.Guild(c.GuildID)
+	c, err := m.Discord.Channel(m.Channel())
+	if err != nil {
+		log.Println("error retrieving channel from state", err)
+		return ""
+	}
+	g, err := m.Discord.Guild(c.GuildID)
+	if err != nil {
+		log.Println("error retrieving channel from state", err)
+		return ""
+	}
 	return g.Name
 }
 
 // Guild returns the discordgo guild object of a message
 func (m *DiscordMessage) Guild() *discordgo.Guild {
-	c, _ := m.Discord.Channel(m.Channel())
-	g, _ := m.Discord.Guild(c.GuildID)
+	c, err := m.Discord.Channel(m.Channel())
+	if err != nil {
+		log.Println("error retrieving channel from state", err)
+		return nil
+	}
+	g, err := m.Discord.Guild(c.GuildID)
+	if err != nil {
+		log.Println("error retrieving channel from state", err)
+		return nil
+	}
 	return g
 }
 
