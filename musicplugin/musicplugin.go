@@ -478,11 +478,6 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 	return
 }
 
-//
-// func (p *MusicPlugin) enqueueSearch(vc *voiceConnection, search string, service rikka.Service, message rikka.Message) (err error) {
-
-// }
-
 // enqueue a song/playlest to a VoiceConnections Queue
 func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, service rikka.Service, message rikka.Message, search bool) (err error) {
 
