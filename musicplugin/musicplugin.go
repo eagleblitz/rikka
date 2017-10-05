@@ -383,7 +383,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		msg += fmt.Sprintf("`Total connections:`\t%v\n", c)
 		msg += fmt.Sprintf("`Total songs queued:`\t%v\n", songsAdded)
 		msg += fmt.Sprintf("`Current songs queued:`\t%v\n", s)
-		msg += fmt.Sprintf("`Total time queued:`\t%v", time.Duration(l*time.Second).String())
+		msg += fmt.Sprintf("`Current time queued:`\t%v", time.Duration(l*time.Second).String())
 		service.SendMessage(message.Channel(), msg)
 
 	case "list", "queue":
