@@ -92,36 +92,29 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 }
 
 func (b *Bot) callbacks(service Service, m Message) {
-	c, ok := b.Services[service.Name()].callbacks[m.UserID()]
+	n := service.Name()
+	c, ok := b.Services[n].callbacks[m.UserID()]
 	if !ok {
 		return
 	}
 	c <- m
-	// cbs := b.Services[service.Name()].callbacks
-	// for u, c := range cbs {
-	// 	if u == m.UserID() {
-	// 		c <- m
-	// 	}
-	// }
 }
 
 func (b *Bot) MakeCallback(service Service, uID string) chan Message {
 	n := service.Name()
-	cbs := b.Services[n]
 	m := make(chan Message)
-	cbs.Lock()
-	cbs.callbacks[uID] = m
-	cbs.Unlock()
+	b.Services[n].Lock()
+	b.Services[n].callbacks[uID] = m
+	b.Services[n].Unlock()
 	return m
 }
 
 func (b *Bot) CloseCallback(service Service, uID string) {
 	n := service.Name()
-	cbs := b.Services[n]
-	close(b.Services[service.Name()].callbacks[uID])
-	cbs.Lock()
-	delete(b.Services[service.Name()].callbacks, uID)
-	cbs.Unlock()
+	b.Services[n].Lock()
+	close(b.Services[n].callbacks[uID])
+	delete(b.Services[n].callbacks, uID)
+	b.Services[n].Unlock()
 }
 
 // Open will open all the current services and begins listening.
