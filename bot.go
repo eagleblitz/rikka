@@ -93,11 +93,14 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 
 func (b *Bot) callbacks(service Service, m Message) {
 	n := service.Name()
+	b.Services[n].Lock()
 	c, ok := b.Services[n].callbacks[m.UserID()]
 	if !ok {
+		b.Services[n].Unlock()
 		return
 	}
 	c <- m
+	b.Services[n].Unlock()
 }
 
 func (b *Bot) MakeCallback(service Service, uID string) chan Message {
