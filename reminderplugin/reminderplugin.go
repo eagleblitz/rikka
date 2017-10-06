@@ -176,7 +176,7 @@ func (p *ReminderPlugin) Message(bot *rikka.Bot, service rikka.Service, message 
 	hum := humanize.Time(time.Now().Add(d + time.Duration(1*time.Second)))
 	t := time.Now().Add(d)
 
-	if err != nil || t.Before(now) || t.After(now.Add(time.Hour*24*365+time.Hour)) {
+	if err != nil || t.Before(now) || t.After(now.Add(time.Hour*24*365*5+time.Hour)) {
 		service.SendMessage(message.Channel(), fmt.Sprintf("Invalid time. eg: %s", strings.Join(randomTimes, ", ")))
 		return
 	}

@@ -2,7 +2,6 @@ package musicplugin
 
 import (
 	"bufio"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/ThyLeader/rikka"
 	"github.com/bwmarrin/discordgo"
+	"github.com/jonas747/dca"
 )
 
 type MusicPlugin struct {
@@ -203,10 +203,6 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		service.SendMessage(message.Channel(), strings.Join(p.Help(bot, service, message, true), "\n"))
 
 	case "join":
-		// if !service.IsBotOwner(message) {
-		// 	service.SendMessage(message.Channel(), "Sorry, only bot owner can join, please ask him to run this command.")
-		// 	return
-		// }
 		// join the voice channel of the caller or the provided channel ID
 
 		channelID := ""
@@ -242,9 +238,13 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		// leave voice channel for this Guild
 		if !vcok {
 			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
 		}
 
-		vc.conn.Disconnect()
+		err = vc.conn.Disconnect()
+		if err != nil {
+			log.Println("error disconnecting from vc", err.Error())
+		}
 		delete(p.VoiceConnections, channel.GuildID)
 		service.SendMessage(message.Channel(), "Closed voice connection.")
 
@@ -253,6 +253,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 		if !vcok {
 			service.SendMessage(message.Channel(), fmt.Sprintf("There is no voice connection for this Guild."))
+			return
 		}
 
 		vc.Lock()
@@ -263,6 +264,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 	//case "play":
 	case "add", "play":
 		// Start queue player and optionally enqueue provided songs
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		p.gostart(vc, service)
 
@@ -309,6 +314,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "stop":
 		// stop the queue player
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		if vc.close != nil {
 			close(vc.close)
@@ -322,6 +331,10 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "skip":
 		// skip current song
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		if vc.control == nil {
 			return
@@ -330,6 +343,11 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "pause":
 		// pause the queue player
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		if vc.control == nil {
 			return
 		}
@@ -337,6 +355,11 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "resume":
 		// resume the queue player
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		if vc.control == nil {
 			return
 		}
@@ -368,6 +391,11 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		service.SendMessage(message.Channel(), msg)
 
 	case "stats":
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		p.Lock()
 		var l time.Duration
 		var s int
@@ -383,11 +411,15 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		msg += fmt.Sprintf("`Total connections:`\t%v\n", c)
 		msg += fmt.Sprintf("`Total songs queued:`\t%v\n", songsAdded)
 		msg += fmt.Sprintf("`Current songs queued:`\t%v\n", s)
-		msg += fmt.Sprintf("`Total time queued:`\t%v", time.Duration(l*time.Second).String())
+		msg += fmt.Sprintf("`Current time queued:`\t%v", time.Duration(l*time.Second).String())
 		service.SendMessage(message.Channel(), msg)
 
 	case "list", "queue":
 		// list top items in the queue
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
 
 		if len(vc.Queue) == 0 {
 			service.SendMessage(message.Channel(), "The music queue is empty.")
@@ -424,9 +456,15 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "clear":
 		// clear all items from the queue
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
 		vc.Lock()
 		vc.Queue = []song{}
 		vc.Unlock()
+		service.SendMessage(message.Channel(), "Queue cleared")
 
 	default:
 		service.SendMessage(message.Channel(), "Unknown music command, try `help music`")
@@ -461,13 +499,13 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 		return
 	}
 
-	guildId, err := strconv.Atoi(guild.ID)
+	gID, err := strconv.Atoi(guild.ID)
 	if err != nil {
 		return
 	}
 
 	// NOTE: Setting mute to false, deaf to true.
-	vc.conn, err = p.discord.Sessions[(guildId>>22)%len(p.discord.Sessions)].ChannelVoiceJoin(c.GuildID, cID, false, true)
+	vc.conn, err = p.discord.Sessions[(gID>>22)%len(p.discord.Sessions)].ChannelVoiceJoin(c.GuildID, cID, false, true)
 	if err != nil {
 		return
 	}
@@ -477,11 +515,6 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 
 	return
 }
-
-//
-// func (p *MusicPlugin) enqueueSearch(vc *voiceConnection, search string, service rikka.Service, message rikka.Message) (err error) {
-
-// }
 
 // enqueue a song/playlest to a VoiceConnections Queue
 func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, service rikka.Service, message rikka.Message, search bool) (err error) {
@@ -594,7 +627,7 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 					continue
 				}
 
-				if ms.Message() == "exit" {
+				if strings.ToLower(ms.Message()) == "exit" {
 					service.SendMessage(message.Channel(), "Exiting menu")
 					return nil
 				}
@@ -768,78 +801,40 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		return
 	}
 
+	options := dca.StdEncodeOptions
+	options.RawOutput = true
+	options.Bitrate = 64
+	options.Application = "lowdelay"
+
 	ytdl := exec.Command("youtube-dl", "-v", "-f", "bestaudio", "-o", "-", s.URL)
-	if vc.debug {
-		ytdl.Stderr = os.Stderr
-	}
 	ytdlout, err := ytdl.StdoutPipe()
 	if err != nil {
-		log.Println("musicplugin: ytdl StdoutPipe err:", err)
+		log.Println("ytdl StdoutPipe err:", err)
 		return
 	}
 	ytdlbuf := bufio.NewReaderSize(ytdlout, 16384)
 
-	ffmpeg := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
-	ffmpeg.Stdin = ytdlbuf
-	if vc.debug {
-		ffmpeg.Stderr = os.Stderr
-	}
-	ffmpegout, err := ffmpeg.StdoutPipe()
+	encodingSession, err := dca.EncodeMem(ytdlbuf, options)
 	if err != nil {
-		log.Println("musicplugin: ffmpeg StdoutPipe err:", err)
+		fmt.Println("error creating encoding session", err.Error())
 		return
 	}
-	ffmpegbuf := bufio.NewReaderSize(ffmpegout, 16384)
-
-	dca := exec.Command("./dca-rs", "--raw", "-i", "pipe:0")
-	//dca := exec.Command("./dca", "-raw", "-i", "pipe:0")
-	dca.Stdin = ffmpegbuf
-	//if vc.debug {
-	dca.Stderr = os.Stderr
-	//}
-	dcaout, err := dca.StdoutPipe()
-	if err != nil {
-		log.Println("musicplugin: dca StdoutPipe err:", err)
-		return
-	}
-	dcabuf := bufio.NewReaderSize(dcaout, 16384)
+	defer encodingSession.Cleanup()
 
 	err = ytdl.Start()
 	if err != nil {
-		log.Println("musicplugin: ytdl Start err:", err)
+		log.Println("ytdl Start err:", err)
 		return
 	}
 	defer func() {
 		go ytdl.Wait()
 	}()
 
-	err = ffmpeg.Start()
-	if err != nil {
-		log.Println("musicplugin: ffmpeg Start err:", err)
-		return
-	}
-	defer func() {
-		go ffmpeg.Wait()
-	}()
-
-	err = dca.Start()
-	if err != nil {
-		log.Println("musicplugin: dca Start err:", err)
-		return
-	}
-
-	defer func() {
-		go dca.Wait()
-	}()
-
-	// header "buffer"
-	var opuslen int16
-
-	// Send "speaking" packet over the voice websocket
 	vc.conn.Speaking(true)
-
-	// Send not "speaking" packet over the websocket when we finish
 	defer vc.conn.Speaking(false)
+
+	d := make(chan error)
+	stream := dca.NewStream(encodingSession, vc.conn, d)
 
 	start := time.Now()
 	for {
@@ -847,6 +842,14 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 		case <-close:
 			log.Println("musicplugin: play() exited due to close channel.")
 			return
+		case err = <-d:
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
 		default:
 		}
 		select {
@@ -855,7 +858,8 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 			case Skip:
 				return
 			case Pause:
-				done := false
+				stream.SetPaused(true)
+				b := false
 				for {
 					ctl, ok := <-control
 					if !ok {
@@ -865,49 +869,20 @@ func (p *MusicPlugin) play(vc *voiceConnection, close <-chan struct{}, control <
 					case Skip:
 						return
 					case Resume:
-						done = true
+						stream.SetPaused(false)
+						b = true
 						break
 					}
-
-					if done {
+					if b == true {
 						break
 					}
-
 				}
 			}
 		default:
 		}
 
-		// read dca opus length header
-		err = binary.Read(dcabuf, binary.LittleEndian, &opuslen)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return
-		}
-		if err != nil {
-			log.Println("musicplugin: read opus length from dca err:", err)
-			return
-		}
-
-		// // read opus data from dca
-		opus := make([]byte, opuslen)
-		err = binary.Read(dcabuf, binary.LittleEndian, &opus)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			return
-		}
-		if err != nil {
-			log.Println("musicplugin: read opus from dca err:", err)
-			return
-		}
-
-		// Send received PCM to the sendPCM channel
-		vc.conn.OpusSend <- opus
-		// TODO: Add a select and timeout to above
-		// shouldn't ever block longer than maybe 18-25ms
-
-		// this can cause a panic if vc becomes nil while waiting to send
-		// on the opus channel. TODO fix..
 		vc.playing.Remaining = (vc.playing.Duration - int(time.Since(start).Seconds()))
-
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
