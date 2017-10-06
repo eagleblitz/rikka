@@ -627,7 +627,7 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 					continue
 				}
 
-				if ms.Message() == "exit" {
+				if strings.ToLower(ms.Message()) == "exit" {
 					service.SendMessage(message.Channel(), "Exiting menu")
 					return nil
 				}
