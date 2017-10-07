@@ -617,7 +617,11 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 
 		timeout := time.Tick(30 * time.Second)
 
-		m := bot.MakeCallback(service, message.UserID())
+		m, err := bot.MakeCallback(service, message.UserID())
+		if err != nil {
+			service.SendMessage(message.Channel(), "A menu already exists")
+			return nil
+		}
 		defer bot.CloseCallback(service, message.UserID())
 		e := 0
 		for {

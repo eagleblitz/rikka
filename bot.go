@@ -83,6 +83,9 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 	for {
 		message := <-messageChan
 		//log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.Message())
+		if message.IsBot() {
+			return
+		}
 		plugins := b.Services[serviceName].Plugins
 		for _, plugin := range plugins {
 			go plugin.Message(b, service, message)
@@ -99,17 +102,25 @@ func (b *Bot) callbacks(service Service, m Message) {
 		b.Services[n].Unlock()
 		return
 	}
-	c <- m
+	select {
+	case c <- m:
+	default:
+		// ignore if channel isnt immediately able to send
+	}
 	b.Services[n].Unlock()
 }
 
-func (b *Bot) MakeCallback(service Service, uID string) chan Message {
+// MakeCallback creates a callback that will send all messages
+func (b *Bot) MakeCallback(service Service, uID string) (chan Message, error) {
 	n := service.Name()
 	m := make(chan Message)
 	b.Services[n].Lock()
+	if _, ok := b.Services[n].callbacks[uID]; ok {
+		return nil, errors.New("callback already exists")
+	}
 	b.Services[n].callbacks[uID] = m
 	b.Services[n].Unlock()
-	return m
+	return m, nil
 }
 
 func (b *Bot) CloseCallback(service Service, uID string) {
