@@ -83,9 +83,6 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 	for {
 		message := <-messageChan
 		//log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.Message())
-		if message.IsBot() {
-			return
-		}
 		plugins := b.Services[serviceName].Plugins
 		for _, plugin := range plugins {
 			go plugin.Message(b, service, message)
