@@ -113,6 +113,7 @@ func (b *Bot) MakeCallback(service Service, uID string) (chan Message, error) {
 	m := make(chan Message)
 	b.Services[n].Lock()
 	if _, ok := b.Services[n].callbacks[uID]; ok {
+		b.Services[n].Unlock()
 		return nil, errors.New("callback already exists")
 	}
 	b.Services[n].callbacks[uID] = m
