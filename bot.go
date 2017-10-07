@@ -123,9 +123,9 @@ func (b *Bot) MakeCallback(service Service, uID string) (chan Message, error) {
 func (b *Bot) CloseCallback(service Service, uID string) {
 	n := service.Name()
 	b.Services[n].Lock()
+	defer b.Services[n].Unlock()
 	close(b.Services[n].callbacks[uID])
 	delete(b.Services[n].callbacks, uID)
-	b.Services[n].Unlock()
 }
 
 // Open will open all the current services and begins listening.
