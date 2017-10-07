@@ -671,7 +671,7 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 				return nil
 			case <-timeout:
 				service.SendMessage(message.Channel(), "Menu timed out")
-				return
+				return nil
 			}
 		}
 	}
