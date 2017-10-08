@@ -523,6 +523,7 @@ func (d *Discord) MessageHistory(channel string) []Message {
 	return messages
 }
 
+// Channel returns the channel object given a channelID
 func (d *Discord) Channel(channelID string) (channel *discordgo.Channel, err error) {
 	for _, s := range d.Sessions {
 		channel, err = s.State.Channel(channelID)
@@ -533,6 +534,7 @@ func (d *Discord) Channel(channelID string) (channel *discordgo.Channel, err err
 	return
 }
 
+// Guild returns the guild object given a guildID
 func (d *Discord) Guild(guildID string) (guild *discordgo.Guild, err error) {
 	for _, s := range d.Sessions {
 		guild, err = s.State.Guild(guildID)
@@ -543,6 +545,7 @@ func (d *Discord) Guild(guildID string) (guild *discordgo.Guild, err error) {
 	return
 }
 
+// Guilds returns a slice of all the guilds the bot belongs to
 func (d *Discord) Guilds() []*discordgo.Guild {
 	guilds := []*discordgo.Guild{}
 	for _, s := range d.Sessions {
@@ -551,6 +554,7 @@ func (d *Discord) Guilds() []*discordgo.Guild {
 	return guilds
 }
 
+// UserChannelPermissions returns the permission int given a specific userID and channelID
 func (d *Discord) UserChannelPermissions(userID, channelID string) (apermissions int, err error) {
 	for _, s := range d.Sessions {
 		apermissions, err = s.State.UserChannelPermissions(userID, channelID)
@@ -561,6 +565,7 @@ func (d *Discord) UserChannelPermissions(userID, channelID string) (apermissions
 	return
 }
 
+// UserColor returns the color int given a userID and a channelID
 func (d *Discord) UserColor(userID, channelID string) int {
 	for _, s := range d.Sessions {
 		color := s.State.UserColor(userID, channelID)
@@ -571,10 +576,12 @@ func (d *Discord) UserColor(userID, channelID string) int {
 	return 0
 }
 
+// Nickname returns the nickname of the user who sent a specific message
 func (d *Discord) Nickname(message Message) string {
 	return d.NicknameForID(message.UserID(), message.UserName(), message.Channel())
 }
 
+// NicknameForID returns the nickname given a userID, username, and channelID
 func (d *Discord) NicknameForID(userID, userName, channelID string) string {
 	c, err := d.Channel(channelID)
 	if err == nil {
@@ -593,11 +600,12 @@ func (d *Discord) NicknameForID(userID, userName, channelID string) string {
 	return userName
 }
 
+// Member returns the member object of a specific userID and guildID
 func (d *Discord) Member(gID, uID string) (*discordgo.Member, error) {
 	return d.Session.GuildMember(gID, uID)
 }
 
-// TimestampForID takes a Discord ID and parses a timestamp from it
+// TimestampForID takes a Discord snowflake and parses a timestamp from it
 func (d *Discord) TimestampForID(id string) (time.Time, error) {
 	_id, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
@@ -606,7 +614,7 @@ func (d *Discord) TimestampForID(id string) (time.Time, error) {
 	return time.Unix(((_id>>22)+1420070400000)/1000, 0), nil
 }
 
-//
+// EditMessage edits a message given the channelID, messageID, and the content you want to edit the message to
 func (d *Discord) EditMessage(cID, mID, content string) (*discordgo.Message, error) {
 	return d.Session.ChannelMessageEdit(cID, mID, content)
 }

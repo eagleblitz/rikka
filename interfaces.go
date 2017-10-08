@@ -40,7 +40,7 @@ type Message interface {
 }
 
 // ErrAlreadyJoined is an error dispatched on Join if the bot is already joined to the request.
-var ErrAlreadyJoined = errors.New("Already joined.")
+var ErrAlreadyJoined = errors.New("already joined")
 
 // Service is a service interface, wraps a single service such as YouTube or Discord.
 type Service interface {
@@ -56,7 +56,6 @@ type Service interface {
 	SendFile(channel, name string, r io.Reader) error
 	BanUser(channel, userID string, duration int) error
 	UnbanUser(channel, userID string) error
-	Join(join string) error
 	Typing(channel string) error
 	PrivateMessage(userID, messageID string) (*discordgo.Message, error)
 	IsBotOwner(message Message) bool

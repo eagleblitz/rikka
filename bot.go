@@ -121,6 +121,7 @@ func (b *Bot) MakeCallback(service Service, uID string) (chan Message, error) {
 	return m, nil
 }
 
+// CloseCallback closes a callback after a menu is finished
 func (b *Bot) CloseCallback(service Service, uID string) {
 	n := service.Name()
 	b.Services[n].Lock()
@@ -167,7 +168,7 @@ func (b *Bot) Save() {
 // UploadToImgur uploads image data to Imgur and returns the url to it.
 func (b *Bot) UploadToImgur(re io.Reader, filename string) (string, error) {
 	if b.ImgurID == "" {
-		return "", errors.New("No Imgur client ID provided.")
+		return "", errors.New("no Imgur client ID provided")
 	}
 
 	bodyBuf := &bytes.Buffer{}
