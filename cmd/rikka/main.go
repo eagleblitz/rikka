@@ -82,7 +82,6 @@ func main() {
 	cp.AddCommand("stats", statsplugin.StatsCommand, statsplugin.StatsHelp)
 	cp.AddCommand("info", statsplugin.StatsCommand, nil)
 	cp.AddCommand("stat", statsplugin.StatsCommand, nil)
-	cp.AddCommand("guilds", statsplugin.GuildsCommand, nil)
 	cp.AddCommand("pepe", misccommands.MessagePeepo, nil)
 	cp.AddCommand("ts", misccommands.MessageIDTS, misccommands.HelpIDTS)
 	cp.AddCommand("support", misccommands.MessageSupport, misccommands.HelpSupport)

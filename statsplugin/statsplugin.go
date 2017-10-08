@@ -1,16 +1,13 @@
 package statsplugin
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
-	"strconv"
-	"text/tabwriter"
 	"time"
 
 	"github.com/ThyLeader/rikka"
-	"github.com/dustin/go-humanize"
 	"github.com/bwmarrin/discordgo"
+	"github.com/dustin/go-humanize"
 )
 
 var statsStartTime = time.Now()
@@ -24,34 +21,12 @@ func getDurationString(duration time.Duration) string {
 	)
 }
 
-func GuildsCommand(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
-	if !service.IsBotOwner(message) {
-		return
-	}
-	//discord := service.(*rikka.Discord)
-	guilds, members := service.GuildList()
-
-	total := ""
-	for i, e := range guilds {
-		total = total + e + ", " + strconv.Itoa(members[i]) + " members\n"
-	}
-	service.SendMessage(message.Channel(), "```"+total+"```")
-}
-
 // StatsCommand returns bot statistics.
 func StatsCommand(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
 	var users, channels int
 	discord := service.(*rikka.Discord)
 	stats := runtime.MemStats{}
 	runtime.ReadMemStats(&stats)
-
-	w := &tabwriter.Writer{}
-	buf := &bytes.Buffer{}
-
-	w.Init(buf, 0, 4, 0, ' ', 0)
-	if service.Name() == rikka.DiscordServiceName {
-		fmt.Fprintf(w, "```\n")
-	}
 
 	for _, e := range discord.Session.State.Ready.Guilds {
 		users += e.MemberCount
@@ -73,10 +48,8 @@ func StatsCommand(bot *rikka.Bot, service rikka.Service, message rikka.Message, 
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
 			URL: discordgo.EndpointUserAvatar(discord.Session.State.User.ID, discord.Session.State.User.Avatar),
 		},
-		Color: 0x79c879,
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: fmt.Sprintf("Generated with <3 on %s", time.Now().Format(time.UnixDate)),
-		},
+		Color:     0x79c879,
+		Timestamp: fmt.Sprintf("%s", time.Now().Format(time.RFC3339)),
 	}
 
 	_, err := discord.Session.ChannelMessageSendEmbed(message.Channel(), embed)

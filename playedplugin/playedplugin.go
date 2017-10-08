@@ -344,8 +344,9 @@ func (p *playedPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		},
 		Color: 0x79c879,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: fmt.Sprintf("Data valid as of %s", time.Now().Format(time.UnixDate)),
+			Text: fmt.Sprintf("Data valid as of "),
 		},
+		Timestamp: fmt.Sprintf("%s", time.Now().Format(time.RFC3339)),
 	}
 
 	_, err := discord.Session.ChannelMessageSendEmbed(message.Channel(), embed)
