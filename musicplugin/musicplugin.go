@@ -504,11 +504,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 	c, err := p.discord.Channel(cID)
 	if err != nil {
-		// if not in state, request over api
-		c, err = p.discord.Session.Channel(cID)
-		if err != nil {
-			return
-		}
+		return
 	}
 
 	// 2 == GUILD_VOICE
@@ -532,11 +528,7 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 
 	guild, err := p.discord.Guild(c.GuildID)
 	if err != nil {
-		// if not in state, request over api
-		guild, err = p.discord.Session.Guild(c.GuildID)
-		if err != nil {
-			return
-		}
+		return
 	}
 
 	gID, err := strconv.Atoi(guild.ID)
