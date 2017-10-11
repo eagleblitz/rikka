@@ -114,7 +114,6 @@ func main() {
 	bot.RegisterPlugin(discord, imageplugin.New())
 	//bot.RegisterPlugin(discord, pubgplugin.New())
 	bot.RegisterPlugin(discord, nametrackplugin.New())
-	//bot.RegisterPlugin(discord, callbacktesting.New())
 	bot.RegisterPlugin(discord, emojiplugin.New())
 	bot.RegisterPlugin(discord, seenplugin.New())
 	bot.RegisterPlugin(discord, feedbackplugin.New())

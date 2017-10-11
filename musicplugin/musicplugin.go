@@ -35,6 +35,9 @@ type voiceConnection struct {
 	ChannelID    string
 	MaxQueueSize int
 	Queue        []song
+	Loop         bool
+	Repeat       bool
+	Announce     bool
 
 	close   chan struct{}
 	control chan controlMessage
@@ -250,7 +253,6 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 	case "debug":
 		// enable or disable debug
-
 		if !vcok {
 			service.SendMessage(message.Channel(), fmt.Sprintf("There is no voice connection for this Guild."))
 			return
@@ -293,24 +295,6 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		if err != nil {
 			service.SendMessage(message.Channel(), err.Error())
 		}
-		// err = p.enqueue(vc, u.String(), service, message)
-		// if err != nil {
-		// 	// TODO: Might need improving.
-		// 	service.SendMessage(message.Channel(), err.Error())
-		// }
-		//}
-
-		// for _, v := range parts[1:] {
-		// 	url, err := url.Parse(v) // doesn't check much..
-		// 	if err != nil {
-		// 		continue
-		// 	}
-		// 	err = p.enqueue(vc, url.String(), service, message)
-		// 	if err != nil {
-		// 		// TODO: Might need improving.
-		// 		service.SendMessage(message.Channel(), err.Error())
-		// 	}
-		// }
 
 	case "stop":
 		// stop the queue player
@@ -391,11 +375,6 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		service.SendMessage(message.Channel(), msg)
 
 	case "stats":
-		if !vcok {
-			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
-			return
-		}
-
 		p.Lock()
 		var l time.Duration
 		var s int
@@ -454,6 +433,44 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 		service.SendMessage(message.Channel(), msg)
 
+	case "loop", "l":
+		// loop the queue
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+		vc.Lock()
+		defer vc.Unlock()
+		if vc.Repeat {
+			vc.Repeat = false
+			vc.Loop = !vc.Loop
+			go service.SendMessage(message.Channel(), fmt.Sprintf("Disabled repeat and set looping to `%v`", vc.Loop))
+			return
+		}
+
+		vc.Loop = !vc.Loop
+		go service.SendMessage(message.Channel(), fmt.Sprintf("Looping set to `%v`", vc.Loop))
+		return
+
+	case "repeat", "r":
+		// repeat current song
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+		vc.Lock()
+		defer vc.Unlock()
+		if vc.Loop {
+			vc.Loop = false
+			vc.Repeat = !vc.Repeat
+			go service.SendMessage(message.Channel(), fmt.Sprintf("Disabled looping and set repeat to `%v`", vc.Repeat))
+			return
+		}
+
+		vc.Repeat = !vc.Repeat
+		go service.SendMessage(message.Channel(), fmt.Sprintf("Repeat set to `%v`", vc.Repeat))
+		return
+
 	case "clear":
 		// clear all items from the queue
 		if !vcok {
@@ -466,6 +483,18 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		vc.Unlock()
 		service.SendMessage(message.Channel(), "Queue cleared")
 
+	case "announce":
+		// toggle song announcements
+		if !vcok {
+			service.SendMessage(message.Channel(), "There is no voice connection for this Guild.")
+			return
+		}
+
+		vc.Lock()
+		vc.Announce = !vc.Announce
+		go service.SendMessage(message.Channel(), fmt.Sprintf("Song announcements set to `%v`", vc.Announce))
+		vc.Unlock()
+
 	default:
 		service.SendMessage(message.Channel(), "Unknown music command, try `help music`")
 	}
@@ -473,15 +502,18 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 
 // join a specific voice channel
 func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
-
 	c, err := p.discord.Channel(cID)
 	if err != nil {
-		return
+		// if not in state, request over api
+		c, err = p.discord.Session.Channel(cID)
+		if err != nil {
+			return
+		}
 	}
 
 	// 2 == GUILD_VOICE
 	if c.Type != 2 {
-		err = fmt.Errorf("That's not a voice channel.")
+		err = fmt.Errorf("not a voice channel")
 		return
 	}
 
@@ -490,13 +522,21 @@ func (p *MusicPlugin) join(cID string) (vc *voiceConnection, err error) {
 	vc, ok := p.VoiceConnections[c.GuildID]
 	if !ok {
 		vc = &voiceConnection{}
+		vc.Announce = true
 		p.VoiceConnections[c.GuildID] = vc
 	}
 	p.Unlock()
 
+	// default song announcements to true
+	vc.Announce = true
+
 	guild, err := p.discord.Guild(c.GuildID)
 	if err != nil {
-		return
+		// if not in state, request over api
+		guild, err = p.discord.Session.Guild(c.GuildID)
+		if err != nil {
+			return
+		}
 	}
 
 	gID, err := strconv.Atoi(guild.ID)
@@ -615,7 +655,8 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 		dd, _ := service.SendMessage(message.Channel(), strings.Join(msg, "\n"))
 		defer service.DeleteMessage(message.Channel(), dd.ID)
 
-		timeout := time.Tick(30 * time.Second)
+		timeout := time.NewTicker(30 * time.Second)
+		defer timeout.Stop()
 
 		m, err := bot.MakeCallback(service, message.UserID())
 		if err != nil {
@@ -655,8 +696,8 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 
 				service.SendMessage(message.Channel(), fmt.Sprintf("You picked number %v.", n))
 				s := res[n-1]
-				if s.Duration > 9000 {
-					service.SendMessage(message.Channel(), "Sorry, but Rikka does not currently allow songs longer than 2.5 hours")
+				if s.Duration > 18000 {
+					service.SendMessage(message.Channel(), "Sorry, but Rikka does not currently allow songs longer than 5 hours")
 					return nil
 				}
 				s.TextChannelID = message.Channel()
@@ -669,7 +710,7 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 				s.announceSongAdded(service, message.Channel(), vcLen)
 				songsAdded++
 				return nil
-			case <-timeout:
+			case <-timeout.C:
 				service.SendMessage(message.Channel(), "Menu timed out")
 				return nil
 			}
@@ -684,8 +725,8 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 			continue
 		}
 
-		if s.Duration > 9000 {
-			service.SendMessage(message.Channel(), "Sorry, but Rikka does not currently allow songs longer than 2.5 hours")
+		if s.Duration > 18000 {
+			service.SendMessage(message.Channel(), "Sorry, but Rikka does not currently allow songs longer than 5 hours")
 			return nil
 		}
 
@@ -704,7 +745,7 @@ func (p *MusicPlugin) enqueue(bot *rikka.Bot, vc *voiceConnection, url string, s
 
 // i had a bunch of different ones scattered around so hopefully this will clean things up in terms of consistency
 func (s *song) announceSongAdded(service rikka.Service, channel string, vcLen int) {
-	service.SendMessage(channel, fmt.Sprintf("Added %s to the queue as requested by %s.\nThere are now %v songs in the queue", s.Title, s.AddedBy, vcLen))
+	service.SendMessage(channel, fmt.Sprintf("Added *%s* to the queue as requested by %s.\nThere are now `%v` songs in the queue", s.Title, s.AddedBy, vcLen))
 }
 
 func (s *song) announceSongPlaying(service rikka.Service, channel string, vcLen int, timeLeft string) {
@@ -768,6 +809,12 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 
 		// Get song to play and store it in local Song var
 		vc.Lock()
+		if vc.Loop && vc.Repeat {
+			service.SendMessage(vc.playing.TextChannelID, "There was an error. Resetting loop and repeat")
+			vc.Loop = false
+			vc.Repeat = false
+		}
+
 		vcLen := len(vc.Queue)
 		if vcLen-1 >= i {
 			s = vc.Queue[i]
@@ -784,13 +831,25 @@ func (p *MusicPlugin) start(vc *voiceConnection, close <-chan struct{}, control 
 			timeLeft += time.Duration(v.Duration)
 		}
 		timeLeft *= time.Second
-		s.announceSongPlaying(service, vc.playing.TextChannelID, vcLen, timeLeft.String())
+		if vc.Announce {
+			s.announceSongPlaying(service, vc.playing.TextChannelID, vcLen, timeLeft.String())
+		}
 		p.play(vc, close, control, s)
 		vc.playing = nil
 
 		vc.Lock()
 		if len(vc.Queue) > 0 {
-			vc.Queue = append(vc.Queue[:i], vc.Queue[i+1:]...)
+			if !vc.Repeat && !vc.Loop {
+				vc.Queue = append(vc.Queue[:i], vc.Queue[i+1:]...)
+			}
+			if vc.Repeat {
+				// do nothing
+			}
+			if vc.Loop {
+				var pop song
+				pop, vc.Queue = vc.Queue[0], vc.Queue[1:]
+				vc.Queue = append(vc.Queue, pop)
+			}
 		}
 		vc.Unlock()
 	}

@@ -161,7 +161,6 @@ func (p *nameTrackPlugin) scanAll(service rikka.Service) {
 	fmt.Println("scanning all")
 	for _, g := range discord.Session.State.Ready.Guilds {
 		if g.Unavailable {
-			fmt.Println("guild unavailable")
 			continue
 		}
 		for _, m := range g.Members {
@@ -178,20 +177,6 @@ func (p *nameTrackPlugin) update(u *discordgo.User, nick string) {
 	if nick != "" {
 		client.SAdd("nicks:"+u.ID, nick)
 	}
-
-	// p.Lock()
-	// n, ok := p.Names[u.ID]
-	// if !ok {
-	// 	p.Names[u.ID] = []string{u.Username}
-	// 	fmt.Println("update new " + u.Username)
-	// 	return
-	// }
-	// if !searchNicks(n, u.Username) {
-	// 	p.Names[u.ID] = append(p.Names[u.ID], u.Username)
-	// 	fmt.Println("update changed " + u.Username)
-	// 	return
-	// }
-	// p.Unlock()
 }
 
 // true if current nickname was already recorded, false if not
