@@ -158,6 +158,9 @@ func (p *MusicPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.
 			rikka.CommandHelp(service, "music", "list/queue", "List contents of queue.")[0],
 			rikka.CommandHelp(service, "music", "clear", "Clear all items from queue.")[0],
 			rikka.CommandHelp(service, "music", "stats", "View stats about the music command.")[0],
+			rikka.CommandHelp(service, "music", "loop", "Loops through the current queue.")[0],
+			rikka.CommandHelp(service, "music", "repeat", "Repeats the current song.")[0],
+			rikka.CommandHelp(service, "music", "announce", "Toggles 'now playing' announcements.")[0],
 		}...)
 	}
 
@@ -172,7 +175,7 @@ func (p *MusicPlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 		return
 	}
 
-	if !rikka.MatchesCommand(service, "music", message) && !rikka.MatchesCommand(service, "mu", message) {
+	if !rikka.MatchesCommand(service, "music", message) && !rikka.MatchesCommand(service, "mu", message) && !rikka.MatchesCommand(service, "m", message) {
 		return
 	}
 
