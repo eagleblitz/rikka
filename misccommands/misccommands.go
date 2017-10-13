@@ -83,24 +83,24 @@ func MessageIDTS(bot *rikka.Bot, service rikka.Service, message rikka.Message, c
 	service.SendMessage(message.Channel(), fmt.Sprintf("`%s`", t.UTC().Format(time.UnixDate)))
 }
 
+// HelpIDTS is the help function for timestamp parsing
 var HelpIDTS = rikka.NewCommandHelp("[@username]", "Parses a snowflake (id) and returns a timestamp.")
 
+// MessageSupport is the message handler for support
 func MessageSupport(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
 	service.SendMessage(message.Channel(), "You can join the support server here: https://rikka.xyz")
 }
 
+// HelpSupport is the help function for support
 var HelpSupport = rikka.NewCommandHelp("", "Gives an invite link to join the support server.")
 
 // MessagePing is the command handler for the ping command
 func MessagePing(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
 	now := time.Now()
 	p, _ := service.SendMessage(message.Channel(), "Pong!")
-	t, err := p.Timestamp.Parse()
-	if err != nil {
-		service.SendMessage(message.Channel(), "There was an error parsing the timestamp "+err.Error())
-		return
-	}
-	service.EditMessage(message.Channel(), p.ID, fmt.Sprintf("Pong! - `%s`", t.Sub(now).String()))
+	after := time.Now()
+
+	service.EditMessage(message.Channel(), p.ID, fmt.Sprintf("Pong! - `%s`", after.Sub(now).String()))
 }
 
 // HelpPing is the help text for the ping command
