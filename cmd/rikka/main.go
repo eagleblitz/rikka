@@ -118,7 +118,9 @@ func main() {
 	bot.RegisterPlugin(discord, playingplugin.New())
 	bot.RegisterPlugin(discord, reminderplugin.New())
 	bot.RegisterPlugin(discord, mathplugin.New())
-	bot.RegisterPlugin(discord, imageplugin.New(weebshKey))
+	if weebshKey != "" {
+		bot.RegisterPlugin(discord, imageplugin.New(weebshKey))
+	}
 	//bot.RegisterPlugin(discord, pubgplugin.New())
 	bot.RegisterPlugin(discord, nametrackplugin.New())
 	bot.RegisterPlugin(discord, emojiplugin.New())
