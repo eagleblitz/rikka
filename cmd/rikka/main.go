@@ -35,6 +35,7 @@ var discordOwnerUserID string
 var discordShards int
 var carbonitexKey string
 var neuralURL string
+var weebshKey string
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -70,6 +71,7 @@ func init() {
 		panic("clientid not set")
 	}
 	neuralURL = viper.GetString("neuralurl")
+	weebshKey = viper.GetString("weebsh_key")
 }
 
 func main() {
@@ -92,6 +94,7 @@ func main() {
 	cp.AddCommand("ping", misccommands.MessagePing, misccommands.HelpPing)
 	cp.AddCommand("exclude", misccommands.MessageExclude, nil)
 	cp.AddCommand("unexclude", misccommands.MessageUnexclude, nil)
+	cp.AddCommand("lenny", misccommands.MessageLenny, misccommands.HelpLenny)
 	cp.AddCommand("quit", func(bot *rikka.Bot, service rikka.Service, message rikka.Message, args string, parts []string) {
 		if service.IsBotOwner(message) {
 			q <- true
@@ -115,7 +118,7 @@ func main() {
 	bot.RegisterPlugin(discord, playingplugin.New())
 	bot.RegisterPlugin(discord, reminderplugin.New())
 	bot.RegisterPlugin(discord, mathplugin.New())
-	bot.RegisterPlugin(discord, imageplugin.New())
+	bot.RegisterPlugin(discord, imageplugin.New(weebshKey))
 	//bot.RegisterPlugin(discord, pubgplugin.New())
 	bot.RegisterPlugin(discord, nametrackplugin.New())
 	bot.RegisterPlugin(discord, emojiplugin.New())

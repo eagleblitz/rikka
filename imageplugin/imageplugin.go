@@ -4,84 +4,103 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/ThyLeader/rikka"
+	"github.com/bwmarrin/discordgo"
 )
 
 type response struct {
-	Path string `json:"path"`
-	ID   string `json:"id"`
-	Type string `json:"type"`
-	Nsfw bool   `json:"nsfw"`
+	Status   int           `json:"status"`
+	Message  string        `json:"message,omitempty"`
+	ID       string        `json:"id"`
+	Type     string        `json:"type"`
+	BaseType string        `json:"baseType"`
+	Nsfw     bool          `json:"nsfw"`
+	FileType string        `json:"fileType"`
+	MimeType string        `json:"mimeType"`
+	Tags     []interface{} `json:"tags"`
+	URL      string        `json:"url"`
+	Hidden   bool          `json:"hidden"`
+	Account  string        `json:"account"`
 }
 
-func messageFunc(bot *rikka.Bot, service rikka.Service, message rikka.Message) {
+type imagePlugin struct {
+	Client     *http.Client
+	Key        string
+	Categories []string
+	Tags       []string
+}
+
+func (i *imagePlugin) Message(bot *rikka.Bot, service rikka.Service, message rikka.Message) {
 	if service.IsMe(message) {
 		return
 	}
-	if rikka.MatchesCommand(service, "lewd", message) {
-		service.Typing(message.Channel())
-		var r response
-		h, err := http.Get("https://rra.ram.moe/i/r?type=lewd")
-		if err != nil {
-			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
-			return
-		}
-		body, err := ioutil.ReadAll(h.Body)
-		if err != nil {
-			return
-		}
-		json.Unmarshal(body, &r)
 
-		i, err := http.Get("https://rra.ram.moe" + r.Path)
-		if err != nil {
-			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
-			return
-		}
-		service.SendFile(message.Channel(), "lewd."+strings.Split(r.Path, ".")[1], i.Body)
-		h.Body.Close()
-		i.Body.Close()
-		return
-	}
+	for _, e := range i.Categories {
+		if rikka.MatchesCommand(service, e, message) {
+			service.Typing(message.Channel())
+			var r response
+			req, _ := http.NewRequest("GET", "https://api.weeb.sh/images/random/?type="+e, nil)
+			req.Header.Set("Authorization", "Bearer "+i.Key)
+			res, err := i.Client.Do(req)
+			if err != nil {
+				service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
+				return
+			}
+			defer res.Body.Close()
 
-	if rikka.MatchesCommand(service, "kiss", message) {
-		service.Typing(message.Channel())
-		var r response
-		h, err := http.Get("https://rra.ram.moe/i/r?type=kiss")
-		if err != nil {
-			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
-			return
-		}
-		body, err := ioutil.ReadAll(h.Body)
-		if err != nil {
-			return
-		}
-		json.Unmarshal(body, &r)
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				return
+			}
+			json.Unmarshal(body, &r)
 
-		i, err := http.Get("https://rra.ram.moe" + r.Path)
-		if err != nil {
-			service.SendMessage(message.Channel(), "Error getting the image - "+err.Error())
-			return
+			if r.Status == 404 {
+				service.SendMessage(message.Channel(), "Unable to find the requested image (404)")
+				return
+			}
+
+			service.SendMessageEmbed(message.Channel(), &discordgo.MessageEmbed{
+				Image: &discordgo.MessageEmbedImage{
+					URL: r.URL,
+				},
+				Footer: &discordgo.MessageEmbedFooter{
+					Text: "Powered by weeb.sh",
+				},
+			})
 		}
-		service.SendFile(message.Channel(), "lewd."+strings.Split(r.Path, ".")[1], i.Body)
-		h.Body.Close()
-		i.Body.Close()
-		return
 	}
 }
 
-func helpFunc(bot *rikka.Bot, service rikka.Service, message rikka.Message, detailed bool) []string {
+func (i *imagePlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.Message, detailed bool) []string {
 	if detailed {
 		return nil
 	}
-	return rikka.CommandHelp(service, "lewd", "", ":eyes:")
+	return rikka.CommandHelp(service, "images", "", "See all avail")
+}
+
+func (i *imagePlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte) error {
+	return nil
+}
+
+func (i *imagePlugin) Name() string {
+	return "Images"
+}
+
+func (i *imagePlugin) Save() ([]byte, error) {
+	return nil, nil
+}
+
+func (i *imagePlugin) Stats(bot *rikka.Bot, service rikka.Service, message rikka.Message) []string {
+	return nil
 }
 
 // New creates a new math plugin.
-func New() rikka.Plugin {
-	p := rikka.NewSimplePlugin("Images")
-	p.MessageFunc = messageFunc
-	p.HelpFunc = helpFunc
-	return p
+func New(key string) rikka.Plugin {
+	return &imagePlugin{
+		Client:     &http.Client{},
+		Key:        key,
+		Categories: []string{"awoo", "bang", "blush", "clagwimoth", "cry", "cuddle", "dance", "hug", "insult", "jojo", "kiss", "lewd", "lick", "megumin", "neko", "nom", "owo", "pat", "poke", "pout", "rem", "shrug", "slap", "sleepy", "smile", "teehee", "smug", "stare", "thumbsup", "triggered", "wag", "waifu_insult", "wasted", "sumfuk", "dab", "tickle", "highfive", "banghead", "bite", "discord_memes", "nani", "initial_d"},
+		Tags:       []string{"nuzzle", "cuddle", "momiji inubashiri", "wan", "astolfo", "facedesk", "everyone"},
+	}
 }
