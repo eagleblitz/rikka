@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-redis/redis"
 )
 
 // The number of guilds supported by one shard.
@@ -17,6 +18,12 @@ const numGuildsPerShard = 2400
 
 // DiscordServiceName is the service name for the Discord service.
 const DiscordServiceName string = "Discord"
+
+var client = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "",
+	DB:       0,
+})
 
 // DiscordMessage is a Message wrapper around discordgo.Message.
 type DiscordMessage struct {
@@ -157,6 +164,16 @@ func (m *DiscordMessage) Guild() *discordgo.Guild {
 		return nil
 	}
 	return g
+}
+
+// IsExcluded checks if the user is excluded from using the bot
+func (m *DiscordMessage) IsExcluded() bool {
+	res, err := client.SIsMember("exclude", m.UserID()).Result()
+	if err != nil {
+		fmt.Println("error checking exclude", err.Error())
+		return false
+	}
+	return res
 }
 
 // Discord is a Service provider for Discord.

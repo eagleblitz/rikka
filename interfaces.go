@@ -37,6 +37,7 @@ type Message interface {
 	Timestamp() (time.Time, error)
 	Guild() *discordgo.Guild
 	GuildName() string
+	IsExcluded() bool
 }
 
 // ErrAlreadyJoined is an error dispatched on Join if the bot is already joined to the request.

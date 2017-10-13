@@ -179,20 +179,6 @@ func (p *nameTrackPlugin) update(u *discordgo.User, nick string) {
 	}
 }
 
-// true if current nickname was already recorded, false if not
-func searchNicks(nicks []string, c string) bool {
-	if len(nicks) == 0 {
-		return false
-	}
-
-	for _, n := range nicks {
-		if n == c {
-			return true
-		}
-	}
-	return false
-}
-
 func (p *nameTrackPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.Message, detailed bool) []string {
 	if detailed {
 		return nil

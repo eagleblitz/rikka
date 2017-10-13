@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ThyLeader/rikka"
+	"github.com/go-redis/redis"
 )
 
 var pepe = `:frog::frog::frog::frog::frog::frog::frog:
@@ -27,6 +28,12 @@ __:frog::frog::frog::frog::frog::frog::frog::frog::frog::frog::frog:
 :frog::frog::frog::frog::frog::frog::frog::frog::frog::frog::frog:
 :frog::frog::frog::frog::frog::frog::frog::frog::frog::frog:
 :frog::frog::frog::frog::frog::frog::frog::frog::frog:`
+
+var client = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "",
+	DB:       0,
+})
 
 func MessagePeepo(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
 	if service.IsMe(message) {
@@ -98,6 +105,51 @@ func MessagePing(bot *rikka.Bot, service rikka.Service, message rikka.Message, c
 
 // HelpPing is the help text for the ping command
 var HelpPing = rikka.NewCommandHelp("", "Shows bot latency.")
+
+// MessageExclude excludes people from using the bot
+func MessageExclude(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
+	if !service.IsBotOwner(message) {
+		service.SendMessage(message.Channel(), "Sorry, you must be the owner to use this command")
+		return
+	}
+	if len(parts) != 1 {
+		service.SendMessage(message.Channel(), "userid not provided")
+		return
+	}
+	err := client.SAdd("exclude", parts[0]).Err()
+	if err != nil {
+		service.SendMessage(message.Channel(), err.Error())
+		return
+	}
+	service.SendMessage(message.Channel(), fmt.Sprintf("Successfully excluded user `%s`", parts[0]))
+}
+
+// MessageUnexclude excludes people from using the bot
+func MessageUnexclude(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
+	if !service.IsBotOwner(message) {
+		service.SendMessage(message.Channel(), "Sorry, you must be the owner to use this command")
+		return
+	}
+	if len(parts) != 1 {
+		service.SendMessage(message.Channel(), "userid not provided")
+		return
+	}
+	err := client.SRem("exclude", parts[0]).Err()
+	if err != nil {
+		service.SendMessage(message.Channel(), err.Error())
+		return
+	}
+	service.SendMessage(message.Channel(), fmt.Sprintf("Successfully unexcluded user `%s`", parts[0]))
+}
+
+// MessageLenny is the handler for the lenny command
+func MessageLenny(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
+	r, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lenny))))
+	service.SendMessage(message.Channel(), lenny[int(r.Int64())])
+}
+
+// HelpLenny is the help text for the lenny command
+var HelpLenny = rikka.NewCommandHelp("", "Sends a random lenny")
 
 var lenny = []string{
 	"( ͡° ͜ʖ ͡°)",
@@ -368,12 +420,3 @@ var lenny = []string{
 	"ლ(^o^ლ)",
 	"https://www.tenor.co/FzFX.gif",
 }
-
-// MessageLenny is the handler for the lenny command
-func MessageLenny(bot *rikka.Bot, service rikka.Service, message rikka.Message, command string, parts []string) {
-	r, _ := rand.Int(rand.Reader, big.NewInt(int64(len(lenny))))
-	service.SendMessage(message.Channel(), lenny[int(r.Int64())])
-}
-
-// HelpLenny is the help text for the lenny command
-var HelpLenny = rikka.NewCommandHelp("", "Sends a random lenny")

@@ -21,6 +21,7 @@ import (
 	"github.com/ThyLeader/rikka/misccommands"
 	"github.com/ThyLeader/rikka/musicplugin"
 	"github.com/ThyLeader/rikka/nametrackplugin"
+	"github.com/ThyLeader/rikka/neuralplugin"
 	"github.com/ThyLeader/rikka/playedplugin"
 	"github.com/ThyLeader/rikka/playingplugin"
 	"github.com/ThyLeader/rikka/reminderplugin"
@@ -33,6 +34,7 @@ var discordApplicationClientID string
 var discordOwnerUserID string
 var discordShards int
 var carbonitexKey string
+var neuralURL string
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -67,6 +69,7 @@ func init() {
 	} else {
 		panic("clientid not set")
 	}
+	neuralURL = viper.GetString("neuralurl")
 }
 
 func main() {
@@ -87,7 +90,8 @@ func main() {
 	cp.AddCommand("support", misccommands.MessageSupport, misccommands.HelpSupport)
 	cp.AddCommand("server", misccommands.MessageSupport, nil)
 	cp.AddCommand("ping", misccommands.MessagePing, misccommands.HelpPing)
-
+	cp.AddCommand("exclude", misccommands.MessageExclude, nil)
+	cp.AddCommand("unexclude", misccommands.MessageUnexclude, nil)
 	cp.AddCommand("quit", func(bot *rikka.Bot, service rikka.Service, message rikka.Message, args string, parts []string) {
 		if service.IsBotOwner(message) {
 			q <- true
@@ -117,6 +121,9 @@ func main() {
 	bot.RegisterPlugin(discord, emojiplugin.New())
 	bot.RegisterPlugin(discord, seenplugin.New())
 	bot.RegisterPlugin(discord, feedbackplugin.New())
+	if neuralURL != "" {
+		bot.RegisterPlugin(discord, neuralplugin.New(neuralURL))
+	}
 
 	// Start all our services.
 	bot.Open()
