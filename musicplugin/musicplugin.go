@@ -161,6 +161,7 @@ func (p *MusicPlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.
 			rikka.CommandHelp(service, "music", "loop", "Loops through the current queue.")[0],
 			rikka.CommandHelp(service, "music", "repeat", "Repeats the current song.")[0],
 			rikka.CommandHelp(service, "music", "announce", "Toggles 'now playing' announcements.")[0],
+			"All music commands can be shortened with `r.m` or `r.mu`",
 		}...)
 	}
 

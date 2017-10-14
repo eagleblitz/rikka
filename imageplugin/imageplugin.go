@@ -2,8 +2,10 @@ package imageplugin
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/ThyLeader/rikka"
 	"github.com/bwmarrin/discordgo"
@@ -72,11 +74,28 @@ func (i *imagePlugin) Message(bot *rikka.Bot, service rikka.Service, message rik
 	}
 }
 
-func (i *imagePlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.Message, detailed bool) []string {
+func (i *imagePlugin) Help(bot *rikka.Bot, service rikka.Service, message rikka.Message, detailed bool) (help []string) {
 	if detailed {
-		return nil
+		help = append(help, "Available image commands:\n")
+		index := 0
+		tmp := []string{}
+		for _, e := range i.Categories {
+			if index == 6 {
+				help = append(help, strings.Join(tmp, ", "))
+				tmp = []string{}
+				index = 0
+			}
+			tmp = append(tmp, fmt.Sprintf("`r.%s`", e))
+			index++
+		}
+		help = append(help, strings.Join(tmp, ", "))
+		return help
 	}
-	return rikka.CommandHelp(service, "images", "", "See all avail")
+
+	help = []string{
+		rikka.CommandHelp(service, "images", "", fmt.Sprintf("Images, see `%shelp images`", service.CommandPrefix()))[0],
+	}
+	return help
 }
 
 func (i *imagePlugin) Load(bot *rikka.Bot, service rikka.Service, data []byte) error {
