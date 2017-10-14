@@ -82,7 +82,7 @@ func (b *Bot) listen(service Service, messageChan <-chan Message) {
 	serviceName := service.Name()
 	for {
 		message := <-messageChan
-		if message.IsExcluded() {
+		if message.IsExcluded() || message.IsBot() {
 			continue
 		}
 		plugins := b.Services[serviceName].Plugins
