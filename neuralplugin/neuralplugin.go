@@ -27,6 +27,7 @@ func (p *neuralPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		return
 	}
 
+	service.Typing(message.Channel())
 	_, parts := rikka.ParseCommand(service, message)
 	if len(parts) < 1 {
 		service.SendMessage(message.Channel(), "Please provide something to generate. eg. `r.gen shakespeare`")
@@ -46,7 +47,7 @@ func (p *neuralPlugin) Message(bot *rikka.Bot, service rikka.Service, message ri
 		//Title: "In an alternate universe",
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    "Shakespeare",
-			IconURL: "https://www.biography.com/.image/c_fill%2Ccs_srgb%2Cg_face%2Ch_300%2Cq_80%2Cw_300/MTE1ODA0OTcxNzgzMzkwNzMz/william-shakespeare-194895-1-402.jpg",
+			IconURL: "https://cdn.discordapp.com/attachments/340316564681261056/368671107538223105/unknown.png",
 		},
 		Color: 0xff0000,
 		Fields: []*discordgo.MessageEmbedField{
@@ -64,7 +65,7 @@ type response struct {
 }
 
 func (p *neuralPlugin) requestData(t, l string) (*response, error) {
-	res, err := http.Get(fmt.Sprintf(p.URL, t))
+	res, err := http.Get(fmt.Sprintf(p.URL+"/generate/%s?length=300", t))
 	if err != nil {
 		return nil, err
 	}
